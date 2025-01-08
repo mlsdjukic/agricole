@@ -80,7 +80,7 @@ public class EwsAction implements Action {
                 ItemView view = new ItemView(100);
                 view.getOrderBy().add(ItemSchema.DateTimeReceived, SortDirection.Descending);
                 Date adjustedLastChecked = new Date(lastChecked.getTime() + 1000); // Add 1 millisecond
-                SearchFilter filter = new SearchFilter.IsGreaterThan(ItemSchema.DateTimeReceived, new Date(0));
+                SearchFilter filter = new SearchFilter.IsGreaterThan(ItemSchema.DateTimeReceived, adjustedLastChecked);
                 FindItemsResults<Item> findResults = service.findItems(WellKnownFolderName.Inbox, filter, view);
 
                 if (findResults.getTotalCount() != 0)

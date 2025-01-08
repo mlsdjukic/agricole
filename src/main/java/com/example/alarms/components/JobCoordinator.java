@@ -88,6 +88,8 @@ public class JobCoordinator {
         try {
             newAction = createAction(actionEntity);
             newRules = createRules(actionEntity.getRules());
+
+
         } catch (Exception e) {
             e.printStackTrace(); // Handle the exception or log it appropriately
         }
@@ -95,6 +97,13 @@ public class JobCoordinator {
         if (newAction != null) {
             Action finalNewAction = newAction;
             List<Rule> finalNewRules = newRules;
+
+            finalNewAction.execute()
+                    .flatMap(data -> Flux.fromIterable(finalNewRules)
+                            .doOnNext(rule -> rule.execute(data)) // Execute each rule with the data
+                            .then() // Complete after all rules are executed
+                    );
+
             Disposable subscription = Flux.interval(Duration.ofMillis(newAction.getInterval())) // Emit events periodically
                     .publishOn(Schedulers.boundedElastic()) // Use a bounded thread pool for execution
                     .concatMap(tick -> finalNewAction.execute()

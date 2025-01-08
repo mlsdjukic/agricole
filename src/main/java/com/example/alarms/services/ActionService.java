@@ -37,46 +37,6 @@ public class ActionService {
             );
     }
 
-//    @Transactional
-//    public Mono<ActionEntity> create(ActionDTO action) {
-//
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        try {
-//
-//            String json = objectMapper.writeValueAsString(action.getParams());
-//            return  // Save the new item
-//
-//                    actionRepository.save(new ActionEntity(null, action.getType(), json, null, null,null))
-//                            // Save the links to the tags
-//                            .flatMap(savedAction -> {
-//
-//                                List<RuleEntity > rules = action.getRules().stream()
-//                                        .map(rule -> {
-//                                            try {
-//                                                String ruleJson = objectMapper.writeValueAsString(rule.getRule());
-//                                                return new RuleEntity(null, rule.getName(), ruleJson, savedAction.getId(), null, null);
-//                                            } catch (JsonProcessingException e) {
-//                                                return null;
-//                                            }
-//
-//                                        })
-//                                        .toList();
-//
-//                                return ruleRepository.saveAll(rules)
-//                                        .collectList()
-//                                        .map(savedRules -> {
-//                                            // Attach the saved rules to the action and return it
-//                                            savedAction.setRules(savedRules);
-//                                            return savedAction;
-//                                        });
-//                            });
-//
-//        } catch (JsonProcessingException e) {
-//            throw new RuntimeException(e);
-//        }
-//
-//    }
-
     public Mono<ActionEntity> createWithRules(ActionDTO action) {
         try {
             // Serialize the action parameters
