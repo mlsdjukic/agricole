@@ -9,24 +9,23 @@ import lombok.Getter;
 import lombok.Setter;
 import microsoft.exchange.webservices.data.core.exception.service.local.ServiceLocalException;
 import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
 
 
-@Getter
+
 public class FindPatternRule implements  Rule{
 
     private final Long ruleId;
     private final List<Long> patternTimestamps;
     private Params params;
 
-    @Autowired
-    private AlarmService alarmService;
+    private final AlarmService alarmService;
 
-    public FindPatternRule(String rulesJson, Long ruleId) {
+    public FindPatternRule(String rulesJson, Long ruleId, AlarmService alarmService) {
         this.ruleId = ruleId;
+        this.alarmService = alarmService;
         this.patternTimestamps = new ArrayList<>();
         mapParamsToFields(rulesJson);
     }
@@ -71,7 +70,8 @@ public class FindPatternRule implements  Rule{
     private void notifyPatternFound() {
         String message = "Pattern '" + params.getPattern() + "' found " + params.getRepetition() + " times within " + params.getInterval() + " ms!";
         System.out.println(message);
-        alarmService.save(new AlarmRequestDTO(this.ruleId, message));
+        alarmService.save(new AlarmRequestDTO(this.ruleId, message))
+                .subscribe();
     }
 
     @Setter

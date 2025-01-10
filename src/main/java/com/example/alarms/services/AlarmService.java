@@ -37,7 +37,7 @@ public class AlarmService {
 
     // Get the last record by ruleId
     public Mono<AlarmResponseDTO> getLastRecordByRuleId(Long ruleId) {
-        return alarmRepository.findFirstByRuleIdOrderByIdDesc()
+        return alarmRepository.findFirstByRuleIdOrderByIdDesc(ruleId)
                 .map(this::toResponseDto);
     }
 

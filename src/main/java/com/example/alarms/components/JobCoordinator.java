@@ -7,6 +7,7 @@ import com.example.alarms.entities.RuleEntity;
 import com.example.alarms.entities.security.SecurityAccount;
 import com.example.alarms.rules.Rule;
 import com.example.alarms.services.ActionService;
+import com.example.alarms.services.AlarmService;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import reactor.core.Disposable;
@@ -37,11 +38,14 @@ public class JobCoordinator {
     private final Integer limit;
     private final Integer offset;
 
-    public JobCoordinator(ActionService actionService, Environment env) {
+    private final AlarmService alarmService;
+
+    public JobCoordinator(ActionService actionService, AlarmService alarmService, Environment env, AlarmService alarmService1) {
         this.actionService = actionService;
 
         this.limit = Integer.parseInt(env.getProperty("LIMIT", "100"));
         this.offset = Integer.parseInt(env.getProperty("OFFSET", "0"));
+        this.alarmService = alarmService1;
     }
 
     @PostConstruct
@@ -66,7 +70,7 @@ public class JobCoordinator {
                 .map(rule -> {
                     try {
                         String ruleClassName = "com.example.alarms.rules." + rule.getName();
-                        return (Rule) createInstance(ruleClassName, new Class<?>[]{String.class, Long.class}, rule.getRule(), rule.getId());
+                        return (Rule) createInstance(ruleClassName, new Class<?>[]{String.class, Long.class, AlarmService.class}, rule.getRule(), rule.getId(), this.alarmService);
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to create Rule: " + rule.getName(), e);
                     }
