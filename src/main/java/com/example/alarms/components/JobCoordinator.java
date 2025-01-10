@@ -4,6 +4,7 @@ import com.example.alarms.actions.Action;
 import com.example.alarms.dto.ActionDTO;
 import com.example.alarms.entities.ActionEntity;
 import com.example.alarms.entities.RuleEntity;
+import com.example.alarms.entities.security.SecurityAccount;
 import com.example.alarms.rules.Rule;
 import com.example.alarms.services.ActionService;
 import org.springframework.context.annotation.DependsOn;
@@ -133,8 +134,16 @@ public class JobCoordinator {
         return subscriptions.containsKey(actionId);
     }
 
-    public Mono<ActionEntity> create(ActionDTO action){
-        return actionService.createWithRules(action)
+    public Mono<ActionEntity> create(ActionDTO action, Object authentication){
+        Long userId = null;
+        if (authentication instanceof SecurityAccount sc){
+            userId = sc.getAccount().getId();
+        }
+
+        if (userId == null){
+            return Mono.error(new RuntimeException("User ID is null"));
+        }
+        return actionService.createWithRules(action, userId)
                 .flatMap(actionEntity -> {
                     this.scheduleJob(actionEntity);
                     return Mono.just(actionEntity);

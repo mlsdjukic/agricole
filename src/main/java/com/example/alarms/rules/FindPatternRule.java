@@ -1,13 +1,15 @@
 package com.example.alarms.rules;
 
 
-import com.example.alarms.models.Email;
+import com.example.alarms.dto.AlarmRequestDTO;
+import com.example.alarms.services.AlarmService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import microsoft.exchange.webservices.data.core.exception.service.local.ServiceLocalException;
 import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +21,9 @@ public class FindPatternRule implements  Rule{
     private final Long ruleId;
     private final List<Long> patternTimestamps;
     private Params params;
+
+    @Autowired
+    private AlarmService alarmService;
 
     public FindPatternRule(String rulesJson, Long ruleId) {
         this.ruleId = ruleId;
@@ -64,7 +69,9 @@ public class FindPatternRule implements  Rule{
     }
 
     private void notifyPatternFound() {
-        System.out.println("Pattern '" + params.getPattern() + "' found " + params.getRepetition() + " times within " + params.getInterval() + " ms!");
+        String message = "Pattern '" + params.getPattern() + "' found " + params.getRepetition() + " times within " + params.getInterval() + " ms!";
+        System.out.println(message);
+        alarmService.save(new AlarmRequestDTO(this.ruleId, message));
     }
 
     @Setter

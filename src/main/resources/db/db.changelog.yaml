@@ -48,6 +48,11 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
                   name: created_date
                   type: timestamp
                   defaultValueComputed: CURRENT_TIMESTAMP
@@ -61,7 +66,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: 03-add-relations
+      id: 03-create-rules-table
       author: agricole
       changes:
         - createTable:
@@ -103,4 +108,35 @@ databaseChangeLog:
                   defaultValueComputed: CURRENT_TIMESTAMP
                   constraints:
                     nullable: false
-
+  - changeSet:
+      id: 05-create-alarms-table
+      author: agricole
+      changes:
+        - createTable:
+            schema: public
+            tableName: alarms
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: rule_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_rule_alarm_rule_id
+                    references: rules(id)
+              - column:
+                  name: message
+                  type: varchar(5000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_date
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false

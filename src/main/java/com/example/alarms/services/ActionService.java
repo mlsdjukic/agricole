@@ -37,13 +37,13 @@ public class ActionService {
             );
     }
 
-    public Mono<ActionEntity> createWithRules(ActionDTO action) {
+    public Mono<ActionEntity> createWithRules(ActionDTO action, Long userId) {
         try {
             // Serialize the action parameters
             String jsonParams = objectMapper.writeValueAsString(action.getParams());
 
             // Save the new action
-            return actionRepository.save(new ActionEntity(null, action.getType(), jsonParams, null, null, null))
+            return actionRepository.save(new ActionEntity(null, action.getType(), jsonParams, userId, null, null, null))
                     .flatMap(savedAction -> {
                         // Map ActionDTO rules to RuleEntity
                         List<RuleEntity> rules = action.getRules().stream()

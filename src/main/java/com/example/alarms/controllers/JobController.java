@@ -6,6 +6,9 @@ import com.example.alarms.services.ActionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
@@ -21,9 +24,11 @@ public class JobController {
 
     @PostMapping(value = "/", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Mono<ResponseEntity<Void>> create(@RequestBody ActionDTO action) {
-
-        return jobCoordinator.create(action).thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
-
+        return ReactiveSecurityContextHolder.getContext()
+                .map(SecurityContext::getAuthentication)
+                .map(Authentication::getPrincipal)
+                .flatMap(authentication -> jobCoordinator.create(action, authentication))
+                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
     }
 
     @PutMapping(value = "/", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -49,5 +54,12 @@ public class JobController {
         return jobCoordinator.delete(id).thenReturn(ResponseEntity.status(HttpStatus.NO_CONTENT).build());
 
     }
+    public static class UnauthorizedException extends RuntimeException {
+        public UnauthorizedException(String message) {
+            super(message);
+        }
+    }
 
 }
+
+

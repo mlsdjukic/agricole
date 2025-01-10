@@ -30,6 +30,8 @@ public class ActionEntity {
     private String type;
     private String params;
 
+    private Long userId;
+
     @Transient
     private List<RuleEntity> rules;
 

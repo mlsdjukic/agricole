@@ -1,4 +1,4 @@
-package com.example.alarms.models;
+package com.example.alarms.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,8 +9,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Email {
-
-    private String subject;
-    private String emailContent;
+public class AlarmResponseDTO {
+    private Long id;
+    private Long ruleId;
+    private String message;
 }
+
