@@ -3,6 +3,7 @@ package com.example.alarms.controllers;
 import com.example.alarms.components.JobCoordinator;
 import com.example.alarms.dto.ActionDTO;
 import com.example.alarms.services.ActionService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
+@RequestMapping("/jobs")
 @RestController
+@SecurityRequirement(name = "basicAuth")
 public class JobController {
 
     private final JobCoordinator jobCoordinator;

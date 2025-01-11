@@ -2,12 +2,14 @@ package com.example.alarms.controllers;
 import com.example.alarms.dto.AlarmRequestDTO;
 import com.example.alarms.dto.AlarmResponseDTO;
 import com.example.alarms.services.AlarmService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/alarms")
+@SecurityRequirement(name = "basicAuth")
 public class AlarmController {
 
     private final AlarmService alarmService;

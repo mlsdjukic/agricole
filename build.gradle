@@ -31,6 +31,7 @@ dependencies {
 	implementation 'org.liquibase:liquibase-core:4.30.0'
 	implementation 'org.postgresql:r2dbc-postgresql:1.0.7.RELEASE'
 	implementation 'com.microsoft.ews-java-api:ews-java-api:2.0'
+	implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.2.0'
 	implementation 'org.modelmapper:modelmapper:3.2.2'
 	implementation group: 'javax.xml.ws', name: 'jaxws-api', version: '2.3.1'
 	compileOnly 'org.projectlombok:lombok'
