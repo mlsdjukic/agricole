@@ -46,7 +46,24 @@ public class FindPatternRule implements  Rule{
         if (data instanceof EmailMessage email){
             long currentTime = System.currentTimeMillis();
             try {
-                if (email.getBody().toString().contains(params.getPattern())) {
+                String container;
+
+                switch (this.params.getLocation()) {
+                    case "body":
+                        container = email.getBody().toString();
+                        break;
+                    case "subject":
+                        container = email.getSubject();
+                        break;
+                    case "sender":
+                        container = email.getSender().toString();
+                        break;
+                    default:
+                        System.out.println("Unsupported location " + params.getLocation());
+                        return;
+                }
+
+                if (container.contains(params.getPattern())) {
                     patternTimestamps.add(currentTime);
 
                     // Remove timestamps outside the interval
@@ -77,6 +94,9 @@ public class FindPatternRule implements  Rule{
     @Setter
     @Getter
     private static class Params {
+
+        @JsonProperty("location")
+        private String location;
 
         @JsonProperty("repetition")
         private int repetition;
