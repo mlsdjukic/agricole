@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 04-create-users-table
-      author: agricole
+      author: alarms-app
       changes:
         - createTable:
             schema: public
@@ -25,7 +25,7 @@ databaseChangeLog:
                     nullable: false
   - changeSet:
       id: 01-create-action-table
-      author: agricole
+      author: alarms-app
       changes:
         - createTable:
             schema: public
@@ -67,7 +67,7 @@ databaseChangeLog:
 
   - changeSet:
       id: 03-create-rules-table
-      author: agricole
+      author: alarms-app
       changes:
         - createTable:
             schema: public
@@ -110,7 +110,7 @@ databaseChangeLog:
                     nullable: false
   - changeSet:
       id: 05-create-alarms-table
-      author: agricole
+      author: alarms-app
       changes:
         - createTable:
             schema: public

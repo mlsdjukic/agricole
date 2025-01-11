@@ -69,7 +69,7 @@ public class EwsAction implements Action {
                     service.loadPropertiesForItems(findResults, PropertySet.FirstClassProperties);
                     // If we have results, update lastChecked with the timestamp of the most recent email
                     if (findResults.getTotalCount() != 0) {
-                        Date latestEmailTime = findResults.getItems().getFirst().getDateTimeReceived();
+                        Date latestEmailTime = findResults.getItems().get(0).getDateTimeReceived();
                         lastChecked = latestEmailTime;
                         System.out.println("First call: Latest email timestamp is " + latestEmailTime);
                     }
@@ -84,7 +84,7 @@ public class EwsAction implements Action {
                 FindItemsResults<Item> findResults = service.findItems(WellKnownFolderName.Inbox, filter, view);
 
                 if (findResults.getTotalCount() != 0)
-                    lastChecked = findResults.getItems().getFirst().getDateTimeReceived();
+                    lastChecked = findResults.getItems().get(0).getDateTimeReceived();
 
                 // Return the email subject lines in a Flux
                 return Flux.fromIterable(findResults)
