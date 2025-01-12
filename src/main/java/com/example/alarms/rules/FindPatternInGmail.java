@@ -7,15 +7,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
-import microsoft.exchange.webservices.data.core.exception.service.local.ServiceLocalException;
-import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
 
+import javax.mail.BodyPart;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Multipart;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 
-
-public class FindPatternRule implements  Rule{
+public class FindPatternInGmail implements  Rule{
 
     private final Long ruleId;
     private final List<Long> patternTimestamps;
@@ -23,7 +26,7 @@ public class FindPatternRule implements  Rule{
 
     private final AlarmService alarmService;
 
-    public FindPatternRule(String rulesJson, Long ruleId, AlarmService alarmService) {
+    public FindPatternInGmail(String rulesJson, Long ruleId, AlarmService alarmService) {
         this.ruleId = ruleId;
         this.alarmService = alarmService;
         this.patternTimestamps = new ArrayList<>();
@@ -43,27 +46,39 @@ public class FindPatternRule implements  Rule{
     public void execute(Object data) {
         System.out.println("Executing rule with id: " + this.ruleId);
 
-        if (data instanceof EmailMessage email){
+        if (data instanceof Message email){
             long currentTime = System.currentTimeMillis();
             try {
-                String container;
+                StringBuilder container = new StringBuilder();
 
                 switch (this.params.getLocation()) {
                     case "body":
-                        container = email.getBody().toString();
+                        Object content = email.getContent();
+                        if (content instanceof String) {
+                            container = new StringBuilder((String) content);
+                        } else if (content instanceof Multipart multipart) {
+                            for (int i = 0; i < multipart.getCount(); i++) {
+                                BodyPart bodyPart = multipart.getBodyPart(i);
+                                if (bodyPart.getContent() instanceof String) {
+                                    container.append(bodyPart.getContent().toString());
+                                }
+                            }
+                        }
                         break;
                     case "subject":
-                        container = email.getSubject();
+
+                        container = new StringBuilder(email.getSubject());
                         break;
                     case "sender":
-                        container = email.getSender().toString();
+                        container = new StringBuilder(Arrays.toString(email.getFrom()));
                         break;
                     default:
                         System.out.println("Unsupported location " + params.getLocation());
                         return;
                 }
 
-                if (container.contains(params.getPattern())) {
+                if (container.toString().contains(params.getPattern())) {
+                    System.out.println("pattern " + params.getPattern() + " found!");
                     patternTimestamps.add(currentTime);
 
                     // Remove timestamps outside the interval
@@ -76,7 +91,7 @@ public class FindPatternRule implements  Rule{
                         patternTimestamps.clear();
                     }
                 }
-            } catch (ServiceLocalException e) {
+            } catch (MessagingException | IOException e) {
                 e.printStackTrace();
             }
 
@@ -85,15 +100,17 @@ public class FindPatternRule implements  Rule{
     }
 
     private void notifyPatternFound() {
-        String message = "Pattern '" + params.getPattern() + "' found " + params.getRepetition() + " times within " + params.getInterval() + " ms!";
-        System.out.println(message);
-        alarmService.save(new AlarmRequestDTO(this.ruleId, message))
+        System.out.println(params.getAlarmMessage());
+        alarmService.save(new AlarmRequestDTO(this.ruleId, params.getAlarmMessage()))
                 .subscribe();
     }
 
     @Setter
     @Getter
     private static class Params {
+
+        @JsonProperty("alarm_message")
+        private String alarmMessage;
 
         @JsonProperty("location")
         private String location;

@@ -109,6 +109,11 @@ public class EwsAction implements Action {
         return this.params.getInterval();
     }
 
+    @Override
+    public String getExposedParamsJson() {
+        return "";
+    }
+
     @Setter
     @Getter
     private static class Params {

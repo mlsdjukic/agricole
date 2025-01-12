@@ -10,7 +10,5 @@ import java.util.Map;
 public class RuleDTO {
     private Long id;
     private String name;
-    private Map<String,Object> rule;
-
-    // getters and setters
+    private String rule;
 }

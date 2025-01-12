@@ -2,6 +2,7 @@ package com.example.alarms.controllers;
 
 import com.example.alarms.components.JobCoordinator;
 import com.example.alarms.dto.ActionDTO;
+import com.example.alarms.dto.JobsDTO;
 import com.example.alarms.services.ActionService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RequestMapping("/jobs")
@@ -25,7 +27,7 @@ public class JobController {
         this.jobCoordinator = jobCoordinator;
     }
 
-    @PostMapping(value = "/", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Mono<ResponseEntity<Void>> create(@RequestBody ActionDTO action) {
         return ReactiveSecurityContextHolder.getContext()
                 .map(SecurityContext::getAuthentication)
@@ -34,7 +36,7 @@ public class JobController {
                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
     }
 
-    @PutMapping(value = "/", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PutMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Mono<ResponseEntity<Void>> update(@RequestBody ActionDTO action) {
 
         if (action.getId() == null) {
@@ -57,12 +59,12 @@ public class JobController {
         return jobCoordinator.delete(id).thenReturn(ResponseEntity.status(HttpStatus.NO_CONTENT).build());
 
     }
-    public static class UnauthorizedException extends RuntimeException {
-        public UnauthorizedException(String message) {
-            super(message);
-        }
-    }
 
+
+    @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<JobsDTO> get() {
+        return jobCoordinator.getJobs();
+    }
 }
 
 

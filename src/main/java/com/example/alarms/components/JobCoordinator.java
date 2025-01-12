@@ -2,12 +2,17 @@ package com.example.alarms.components;
 
 import com.example.alarms.actions.Action;
 import com.example.alarms.dto.ActionDTO;
+import com.example.alarms.dto.JobsDTO;
+import com.example.alarms.dto.RuleMapper;
 import com.example.alarms.entities.ActionEntity;
 import com.example.alarms.entities.RuleEntity;
 import com.example.alarms.entities.security.SecurityAccount;
 import com.example.alarms.rules.Rule;
 import com.example.alarms.services.ActionService;
 import com.example.alarms.services.AlarmService;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import reactor.core.Disposable;
@@ -30,18 +35,19 @@ import org.springframework.core.env.Environment;
 @Component
 public class JobCoordinator {
 
-
+    private  final RuleMapper ruleMapper;
     private final ActionService actionService;
 
-    private final Map<Long, Disposable> subscriptions = new ConcurrentHashMap<>();
+    private final Map<Long, JobDescription> subscriptions = new ConcurrentHashMap<>();
 
     private final Integer limit;
     private final Integer offset;
 
     private final AlarmService alarmService;
 
-    public JobCoordinator(ActionService actionService, AlarmService alarmService, Environment env, AlarmService alarmService1) {
+    public JobCoordinator(ActionService actionService, AlarmService alarmService, RuleMapper ruleMapper, Environment env, AlarmService alarmService1) {
         this.actionService = actionService;
+        this.ruleMapper = ruleMapper;
 
         this.limit = Integer.parseInt(env.getProperty("LIMIT", "100"));
         this.offset = Integer.parseInt(env.getProperty("OFFSET", "0"));
@@ -107,7 +113,7 @@ public class JobCoordinator {
                     .flatMap(data -> Flux.fromIterable(finalNewRules)
                             .doOnNext(rule -> rule.execute(data)) // Execute each rule with the data
                             .then() // Complete after all rules are executed
-                    );
+                    ).subscribe();
 
             Disposable subscription = Flux.interval(Duration.ofMillis(newAction.getInterval())) // Emit events periodically
                     .publishOn(Schedulers.boundedElastic()) // Use a bounded thread pool for execution
@@ -119,14 +125,21 @@ public class JobCoordinator {
                     ) // Ensure sequential execution per interval
                     .subscribe(); // Activate the pipeline
 
-            subscriptions.put(actionEntity.getId(), subscription);
+            subscriptions.put(actionEntity.getId(), new JobDescription(subscription, new JobsDTO(
+                    actionEntity.getId(),
+                    actionEntity.getType(),
+                    newAction.getExposedParamsJson(),
+                    actionEntity.getRules().stream().map(ruleMapper::toDTO).toList()
+
+            )));
         }
     }
 
 
     public void stopAction(Long actionId) {
         // Retrieve the subscription and dispose it if it exists
-        Disposable subscription = subscriptions.get(actionId);
+        JobDescription jobDescription = subscriptions.get(actionId);
+        Disposable subscription = jobDescription.getDisposable();
         if (subscription != null) {
             subscription.dispose();
             subscriptions.remove(actionId); // Optionally, remove the entry from the map after disposing
@@ -170,5 +183,21 @@ public class JobCoordinator {
         return actionService.delete(actionId);
 
 
+    }
+
+    public Flux<JobsDTO> getJobs() {
+        return actionService.getAllActions()
+                .flatMap(actionEntity -> {
+                        JobDescription jobDescription = subscriptions.get(actionEntity.getId());
+                        return Mono.just(jobDescription.getJob());
+                });
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    public static class JobDescription {
+        private Disposable disposable;
+        private JobsDTO job;
     }
 }
