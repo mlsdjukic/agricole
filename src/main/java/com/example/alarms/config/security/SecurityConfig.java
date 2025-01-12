@@ -10,6 +10,7 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.web.reactive.config.EnableWebFlux;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -23,10 +24,11 @@ public class SecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/accounts").permitAll()
+                        .pathMatchers("/accounts/**").permitAll()
                         .pathMatchers("/webjars/swagger-ui/**").permitAll()
                         .pathMatchers("/swagger-ui.html").permitAll()
                         .pathMatchers("/v3/api-docs/**").permitAll()
+                        .pathMatchers("/ui/**").permitAll()
                         .anyExchange().authenticated())
                 .httpBasic(withDefaults())
                 .build();
