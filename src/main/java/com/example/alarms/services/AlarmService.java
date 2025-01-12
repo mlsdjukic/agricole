@@ -24,6 +24,11 @@ public class AlarmService {
                 .map(this::toResponseDto);
     }
 
+    public Flux<AlarmResponseDTO> getAll() {
+        return alarmRepository.findAll()
+                .map(this::toResponseDto);
+    }
+
     // Get alarm by ID
     public Mono<AlarmResponseDTO> getById(Long id) {
         return alarmRepository.findById(id)

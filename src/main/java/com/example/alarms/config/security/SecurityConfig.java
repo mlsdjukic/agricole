@@ -24,11 +24,12 @@ public class SecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/alarms/all").permitAll()
                         .pathMatchers("/accounts/**").permitAll()
                         .pathMatchers("/webjars/swagger-ui/**").permitAll()
                         .pathMatchers("/swagger-ui.html").permitAll()
                         .pathMatchers("/v3/api-docs/**").permitAll()
-                        .pathMatchers("/ui/**").permitAll()
+                        .pathMatchers("/", "/ui/**").permitAll()
                         .anyExchange().authenticated())
                 .httpBasic(withDefaults())
                 .build();

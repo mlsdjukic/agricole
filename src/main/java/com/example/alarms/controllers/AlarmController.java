@@ -45,7 +45,12 @@ public class AlarmController {
 
     // Get all alarms with pagination
     @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<AlarmResponseDTO> getAllAlarms(@RequestParam int page, @RequestParam int size) {
+    public Flux<AlarmResponseDTO> getAlarmsPage(@RequestParam int page, @RequestParam int size) {
         return alarmService.getAllWithPagination(page, size);
+    }
+
+    @GetMapping("/all")
+    public Flux<AlarmResponseDTO> getAllAlarms() {
+        return alarmService.getAll();
     }
 }
