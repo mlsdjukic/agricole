@@ -3,6 +3,7 @@ package com.example.alarms.actions;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,6 +17,7 @@ import javax.mail.search.ComparisonTerm;
 import javax.mail.search.ReceivedDateTerm;
 import javax.mail.search.SearchTerm;
 import java.util.Date;
+import java.util.Map;
 import java.util.Properties;
 
 @Setter
@@ -115,14 +117,10 @@ public class GmailAction implements Action {
     }
 
     @Override
-    public String getExposedParamsJson() {
+    public Map<String, Object> getExposedParamsJson() {
         ObjectMapper objectMapper = new ObjectMapper();
 
-        try {
-            return objectMapper.writeValueAsString(exposedParams);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return objectMapper.convertValue(exposedParams, new TypeReference<Map<String, Object>>() {});
     }
 
     @Setter

@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -14,7 +15,7 @@ import java.util.List;
 public class JobsDTO {
     private Long actionId;
     private String type;
-    private String params;
+    private Map<String,Object> params;
     private List<RuleDTO> rules;
 
 }

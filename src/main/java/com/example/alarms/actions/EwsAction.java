@@ -20,7 +20,9 @@ import microsoft.exchange.webservices.data.search.filter.SearchFilter;
 import reactor.core.publisher.Flux;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Map;
 
 @Setter
 @Getter
@@ -110,8 +112,8 @@ public class EwsAction implements Action {
     }
 
     @Override
-    public String getExposedParamsJson() {
-        return "";
+    public Map<String, Object> getExposedParamsJson() {
+        return Collections.emptyMap();
     }
 
     @Setter
