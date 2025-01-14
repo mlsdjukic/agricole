@@ -82,7 +82,7 @@ public class FindPatternInGmail implements  Rule{
                     patternTimestamps.add(currentTime);
 
                     // Remove timestamps outside the interval
-                    patternTimestamps.removeIf(timestamp -> currentTime - timestamp > params.getInterval());
+                    patternTimestamps.removeIf(timestamp -> currentTime - timestamp > params.getInterval() * 1000L);
 
                     // Notify if repetition count is reached within the interval
                     if (patternTimestamps.size() >= params.getRepetition()) {

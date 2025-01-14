@@ -115,7 +115,7 @@ public class JobCoordinator {
                             .then() // Complete after all rules are executed
                     ).subscribe();
 
-            Disposable subscription = Flux.interval(Duration.ofMillis(newAction.getInterval())) // Emit events periodically
+            Disposable subscription = Flux.interval(Duration.ofSeconds(newAction.getInterval())) // Emit events periodically
                     .publishOn(Schedulers.boundedElastic()) // Use a bounded thread pool for execution
                     .concatMap(tick -> finalNewAction.execute()
                             .flatMap(data -> Flux.fromIterable(finalNewRules)
