@@ -2,23 +2,18 @@ package com.example.alarms.actions;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import reactor.core.publisher.Flux;
 
-import javax.mail.Folder;
-import javax.mail.Message;
-import javax.mail.Session;
-import javax.mail.Store;
-import javax.mail.search.ComparisonTerm;
-import javax.mail.search.ReceivedDateTerm;
-import javax.mail.search.SearchTerm;
-import java.util.Date;
-import java.util.Map;
-import java.util.Properties;
+import javax.mail.*;
+import javax.mail.event.ConnectionEvent;
+import javax.mail.event.ConnectionListener;
+import javax.mail.event.MessageCountEvent;
+import javax.mail.event.MessageCountListener;
+import java.util.*;
 
 @Setter
 @Getter
@@ -31,16 +26,86 @@ public class GmailAction implements Action {
     private final Long actionId;
     private Date lastChecked = null;
 
+    private Store store;
+    private Folder inbox;
+
+    ArrayList<Message> receivedMessages;
+
     @Getter
     private Params params;
 
     @Getter
     private ExposedParams exposedParams;
 
-    public GmailAction(String params, Long actionId) {
-        this.paramsJson = params;
+    public GmailAction(String paramsJson, Long actionId) {
+        this.paramsJson = paramsJson;
         this.actionId = actionId;
         mapParamsToFields();
+
+        receivedMessages = new ArrayList<Message>();
+
+        Properties properties = new Properties();
+        properties.put("mail.imap.host", IMAP_HOST);
+        properties.put("mail.imap.port", IMAP_PORT);
+        properties.put("mail.imap.ssl.enable", "true");
+        properties.put("mail.imap.auth", "true");
+        properties.put("mail.imap.ssl.protocols", "TLSv1.2");
+
+        Session session = Session.getInstance(properties, null);
+
+        try {
+            store = session.getStore("imap");
+            store.addConnectionListener(new ConnectionListener() {
+                @Override
+                public void opened(ConnectionEvent e) {
+                    System.out.println("Connection opened: " + e.getSource());
+                }
+
+                @Override
+                public void disconnected(ConnectionEvent e) {
+                    try {
+                        store.connect(IMAP_HOST, params.getUsername(), params.getPassword());
+                        inbox = store.getFolder("INBOX");
+                        inbox.open(Folder.READ_ONLY);
+                    } catch (MessagingException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+
+                @Override
+                public void closed(ConnectionEvent e) {
+                    try {
+                        store.connect(IMAP_HOST, params.getUsername(), params.getPassword());
+                        inbox = store.getFolder("INBOX");
+                        inbox.open(Folder.READ_ONLY);
+                    } catch (MessagingException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
+            store.connect(IMAP_HOST, this.params.getUsername(), this.params.getPassword());
+
+            inbox = store.getFolder("INBOX");
+            inbox.open(Folder.READ_ONLY);
+
+            inbox.addMessageCountListener(new MessageCountListener() {
+                @Override
+                public void messagesAdded(MessageCountEvent event) {
+                    Message[] messages = event.getMessages();
+                    System.out.println("New messages arrived: " + messages.length);
+                    receivedMessages.addAll(Arrays.asList(messages));
+                }
+
+                @Override
+                public void messagesRemoved(MessageCountEvent event) {
+                    System.out.println("Messages removed.");
+                }
+            });
+
+
+        } catch (MessagingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void mapParamsToFields() {
@@ -58,53 +123,13 @@ public class GmailAction implements Action {
         return Flux.defer(() -> {
             System.out.println("Executing action with id: " + this.actionId);
             try {
-                // Create and configure the ExchangeService
-                // Initialize the Exchange Service
+                inbox.getMessageCount(); // Trigger server interaction to check for updates
 
-                Properties properties = new Properties();
-                properties.put("mail.imap.host", IMAP_HOST);
-                properties.put("mail.imap.port", IMAP_PORT);
-                properties.put("mail.imap.ssl.enable", "true");
-                properties.put("mail.imap.auth", "true");
-                properties.put("mail.imap.ssl.protocols", "TLSv1.2");
-
-                Session session = Session.getInstance(properties, null);
-                Store store = session.getStore("imap");
-                store.connect(IMAP_HOST, params.getUsername(), params.getPassword());
-
-                Folder inbox = store.getFolder("INBOX");
-                inbox.open(Folder.READ_ONLY);
-
-                if (lastChecked == null) {
-                    int totalMessages = inbox.getMessageCount();
-
-                    Message message = inbox.getMessage(totalMessages);
-
-                    lastChecked = message.getReceivedDate();
-                    return Flux.empty(); // No emails returned on the first call
-                }
-
-                SearchTerm searchTerm = new ReceivedDateTerm(ComparisonTerm.GT, lastChecked);
-                Message[] messages = inbox.search(searchTerm);
-
-
-                // Return the email subject lines in a Flux
-                return Flux.fromArray(messages)
-                        .filter(message -> {
-                            try {
-                                Date receivedDate = message.getReceivedDate();
-                                if (receivedDate.after(lastChecked)) {
-                                    lastChecked = receivedDate;
-                                    return true;
-                                }
-                                return false;
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                                return false;
-                            }
-                        })
-                        .map(item -> item)
-                        ;
+                return Flux.defer(() -> {
+                    Flux<Object> flux = Flux.fromIterable(new ArrayList<>(receivedMessages));
+                    receivedMessages.clear();
+                    return flux;
+                });
             } catch (Exception e) {
                 return Flux.empty();
             }
