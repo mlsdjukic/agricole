@@ -7,28 +7,24 @@ import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table("rules")
-public class RuleEntity {
+@Table("reactions")
+public class ReactionEntity {
 
     @Id
     private Long id;
+
     private String name;
-    private String rule;
+    private String reaction;
 
-    private Long actionId;
-
-    @Transient
-    private List<ReactionEntity> reactions;
+    private Long rule_id;
 
     @CreatedDate
     private LocalDateTime createdDate;

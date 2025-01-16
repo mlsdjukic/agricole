@@ -140,3 +140,46 @@ databaseChangeLog:
                   defaultValueComputed: CURRENT_TIMESTAMP
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 05-create-reactions-table
+      author: alarms-app
+      changes:
+        - createTable:
+            schema: public
+            tableName: reactions
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: rule_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_rule_alarm_rule_id
+                    references: rules(id)
+              - column:
+                  name: name
+                  type: varchar(5000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reaction
+                  type: varchar(5000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_date
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_modified_date
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
