@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 import microsoft.exchange.webservices.data.core.exception.service.local.ServiceLocalException;
 import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;

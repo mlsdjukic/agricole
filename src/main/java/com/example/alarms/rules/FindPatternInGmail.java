@@ -2,11 +2,14 @@ package com.example.alarms.rules;
 
 
 import com.example.alarms.dto.AlarmRequestDTO;
-import com.example.alarms.services.AlarmService;
+import com.example.alarms.dto.NotificationDTO;
+import com.example.alarms.reactions.Reaction;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import javax.mail.BodyPart;
 import javax.mail.Message;
@@ -22,13 +25,12 @@ public class FindPatternInGmail implements  Rule{
 
     private final Long ruleId;
     private final List<Long> patternTimestamps;
+    private final List<Reaction> reactions;
     private Params params;
 
-    private final AlarmService alarmService;
-
-    public FindPatternInGmail(String rulesJson, Long ruleId, AlarmService alarmService) {
+    public FindPatternInGmail(String rulesJson, Long ruleId, List<Reaction> reactions) {
         this.ruleId = ruleId;
-        this.alarmService = alarmService;
+        this.reactions = reactions;
         this.patternTimestamps = new ArrayList<>();
         mapParamsToFields(rulesJson);
     }
@@ -46,7 +48,7 @@ public class FindPatternInGmail implements  Rule{
     public void execute(Object data) {
         System.out.println("Executing rule with id: " + this.ruleId);
 
-        if (data instanceof Message email){
+        if (data instanceof Message email) {
             long currentTime = System.currentTimeMillis();
             try {
                 StringBuilder container = new StringBuilder();
@@ -86,8 +88,8 @@ public class FindPatternInGmail implements  Rule{
 
                     // Notify if repetition count is reached within the interval
                     if (patternTimestamps.size() >= params.getRepetition()) {
-                        notifyPatternFound();
-                        // Reset the timestamps after notifying
+
+                        Mono.fromRunnable(this::react).subscribeOn(Schedulers.boundedElastic()).subscribe();
                         patternTimestamps.clear();
                     }
                 }
@@ -96,13 +98,12 @@ public class FindPatternInGmail implements  Rule{
             }
 
         }
-
     }
 
-    private void notifyPatternFound() {
-        System.out.println(params.getAlarmMessage());
-        alarmService.save(new AlarmRequestDTO(this.ruleId, params.getAlarmMessage()))
-                .subscribe();
+    private void react() {
+        reactions.forEach(reaction -> {
+            reaction.execute(new NotificationDTO(this.ruleId, params.alarmMessage));
+        });
     }
 
     @Setter

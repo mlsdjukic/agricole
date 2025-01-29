@@ -5,11 +5,15 @@ import com.example.alarms.dto.ActionDTO;
 import com.example.alarms.dto.JobsDTO;
 import com.example.alarms.dto.RuleMapper;
 import com.example.alarms.entities.ActionEntity;
+import com.example.alarms.entities.ReactionEntity;
 import com.example.alarms.entities.RuleEntity;
 import com.example.alarms.entities.security.SecurityAccount;
+import com.example.alarms.reactions.Reaction;
+import com.example.alarms.reactions.WriteAlarmToDBReaction;
 import com.example.alarms.rules.Rule;
 import com.example.alarms.services.ActionService;
 import com.example.alarms.services.AlarmService;
+import jakarta.validation.constraints.Max;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.core.env.Environment;
 @DependsOn("liquibase")
@@ -73,16 +78,37 @@ public class JobCoordinator {
 
     public List<Rule> createRules(List<RuleEntity> ruleEntities) {
         return ruleEntities.stream()
-                .map(rule -> {
-                    try {
-                        String ruleClassName = "com.example.alarms.rules." + rule.getName();
-                        return (Rule) createInstance(ruleClassName, new Class<?>[]{String.class, Long.class, AlarmService.class}, rule.getRule(), rule.getId(), this.alarmService);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Failed to create Rule: " + rule.getName(), e);
-                    }
-                })
+                .map(this::createRule)
                 .collect(Collectors.toList());
     }
+
+    private Rule createRule(RuleEntity ruleEntity) {
+        List<Reaction> reactions = Stream.concat(
+                ruleEntity.getReactions().stream().map(this::createReaction), // Existing reactions
+                Stream.of(new WriteAlarmToDBReaction(ruleEntity.getId()) ) // adding write alarm to db as default reaction
+        ).toList();
+
+        String ruleClassName = "com.example.alarms.rules." + ruleEntity.getName();
+        try {
+            return (Rule) createInstance(ruleClassName,
+                    new Class<?>[]{String.class, Long.class, List.class},
+                    ruleEntity.getRule(), ruleEntity.getId(), reactions);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create Rule: " + ruleEntity.getName(), e);
+        }
+    }
+
+    private Reaction createReaction(ReactionEntity reactionEntity) {
+        String reactionClassName = "com.example.alarms.reactions." + reactionEntity.getName();
+        try {
+            return (Reaction) createInstance(reactionClassName,
+                    new Class<?>[]{String.class, String.class, Long.class},
+                    reactionEntity.getParams(), reactionEntity.getName(), reactionEntity.getRuleId());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create Reaction: " + reactionEntity.getName(), e);
+        }
+    }
+
 
     private Object createInstance(String className, Class<?>[] parameterTypes, Object... args) throws Exception {
         Class<?> clazz = Class.forName(className);
@@ -94,7 +120,8 @@ public class JobCoordinator {
     private void scheduleJob(ActionEntity actionEntity) {
         System.out.println("Scheduling job: " + actionEntity.getType());
         Action newAction = null;
-        List<Rule> newRules = new ArrayList<Rule>();
+        List<Rule> newRules = new ArrayList<>();
+        List<Reaction> newReactions = new ArrayList<>();
 
         try {
             newAction = createAction(actionEntity);
@@ -160,7 +187,7 @@ public class JobCoordinator {
         if (userId == null){
             return Mono.error(new RuntimeException("User ID is null"));
         }
-        return actionService.createWithRules(action, userId)
+        return actionService.create(action, userId)
                 .flatMap(actionEntity -> {
                     this.scheduleJob(actionEntity);
                     return Mono.just(actionEntity);
@@ -180,7 +207,7 @@ public class JobCoordinator {
 
     public Mono<Void> delete(Long actionId){
         this.stopAction(actionId);
-        return actionService.delete(actionId);
+        return actionService.deleteAction(actionId);
 
 
     }

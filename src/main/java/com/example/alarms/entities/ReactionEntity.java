@@ -22,9 +22,9 @@ public class ReactionEntity {
     private Long id;
 
     private String name;
-    private String reaction;
+    private String params;
 
-    private Long rule_id;
+    private Long ruleId;
 
     @CreatedDate
     private LocalDateTime createdDate;

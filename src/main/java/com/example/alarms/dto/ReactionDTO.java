@@ -11,6 +11,6 @@ import java.util.Map;
 public class ReactionDTO {
     private Long id;
     private String name;
-    private Map<String, Object> reaction;
+    private Map<String, Object> params;
 
 }

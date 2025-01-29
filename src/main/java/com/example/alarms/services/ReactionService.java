@@ -45,7 +45,7 @@ public class ReactionService {
         return reactionRepository.findById(id)
                 .flatMap(existing -> {
                     existing.setName(reactionDTO.getName());
-                    existing.setReaction(JsonUtils.toJson(reactionDTO.getReaction())); // Convert Map to JSON
+                    existing.setParams(JsonUtils.toJson(reactionDTO.getParams())); // Convert Map to JSON
                     return reactionRepository.save(existing);
                 })
                 .map(this::convertToDTO);
@@ -57,13 +57,13 @@ public class ReactionService {
 
     private ReactionDTO convertToDTO(ReactionEntity entity) {
         ReactionDTO dto = modelMapper.map(entity, ReactionDTO.class);
-        dto.setReaction(JsonUtils.fromJson(entity.getReaction())); // Convert JSON to Map
+        dto.setParams(JsonUtils.fromJson(entity.getParams())); // Convert JSON to Map
         return dto;
     }
 
     private ReactionEntity convertToEntity(ReactionDTO dto) {
         ReactionEntity entity = modelMapper.map(dto, ReactionEntity.class);
-        entity.setReaction(JsonUtils.toJson(dto.getReaction())); // Convert Map to JSON
+        entity.setParams(JsonUtils.toJson(dto.getParams())); // Convert Map to JSON
         return entity;
     }
 }

@@ -125,10 +125,6 @@ databaseChangeLog:
               - column:
                   name: rule_id
                   type: bigint
-                  constraints:
-                    nullable: false
-                    foreignKeyName: fk_rule_alarm_rule_id
-                    references: rules(id)
               - column:
                   name: message
                   type: varchar(5000)
@@ -167,7 +163,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: reaction
+                  name: params
                   type: varchar(5000)
                   constraints:
                     nullable: false

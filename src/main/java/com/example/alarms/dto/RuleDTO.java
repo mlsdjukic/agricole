@@ -3,6 +3,7 @@ package com.example.alarms.dto;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -11,4 +12,5 @@ public class RuleDTO {
     private Long id;
     private String name;
     private Map<String,Object> rule;
+    private List<ReactionDTO> reactions;
 }
