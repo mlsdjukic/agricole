@@ -1,18 +1,26 @@
 package com.example.alarms.actions;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import microsoft.exchange.webservices.data.core.ExchangeService;
 import microsoft.exchange.webservices.data.core.PropertySet;
 import microsoft.exchange.webservices.data.core.enumeration.misc.ExchangeVersion;
+import microsoft.exchange.webservices.data.core.enumeration.notification.EventType;
 import microsoft.exchange.webservices.data.core.enumeration.property.WellKnownFolderName;
 import microsoft.exchange.webservices.data.core.enumeration.search.SortDirection;
 import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
 import microsoft.exchange.webservices.data.core.service.item.Item;
 import microsoft.exchange.webservices.data.core.service.schema.ItemSchema;
 import microsoft.exchange.webservices.data.credential.WebCredentials;
+import microsoft.exchange.webservices.data.notification.GetEventsResults;
+import microsoft.exchange.webservices.data.notification.ItemEvent;
+import microsoft.exchange.webservices.data.notification.NotificationEvent;
+import microsoft.exchange.webservices.data.notification.PullSubscription;
+import microsoft.exchange.webservices.data.property.complex.FolderId;
 import microsoft.exchange.webservices.data.search.FindItemsResults;
 
 import microsoft.exchange.webservices.data.search.ItemView;
@@ -20,9 +28,8 @@ import microsoft.exchange.webservices.data.search.filter.SearchFilter;
 import reactor.core.publisher.Flux;
 
 import java.net.URI;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Map;
+import java.net.URISyntaxException;
+import java.util.*;
 
 @Setter
 @Getter
@@ -34,74 +41,76 @@ public class EwsAction implements Action {
     @Getter
     private Params params;
 
-    public EwsAction(String params, Long actionId) {
-        this.paramsJson = params;
+    @Getter
+    private ExposedParams exposedParams;
+
+    private ExchangeService service;
+    private PullSubscription subscription;
+
+    public EwsAction(String jsonParams, Long actionId) {
+        this.paramsJson = jsonParams;
         this.actionId = actionId;
-        mapParamsToFields();
+        this.params = mapParamsToFields();
+
+        service = new ExchangeService(ExchangeVersion.Exchange2010_SP2);
+        service.setCredentials(new WebCredentials(this.params.getUsername(), this.params.getPassword()));
+        try {
+            service.setUrl(new URI(this.params.getEws_url().trim()));
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Subscribe to Pull Notifications for Inbox
+        try {
+            this.subscription = service.subscribeToPullNotifications(
+                    List.of(new FolderId(WellKnownFolderName.Inbox)),
+                    5,  // Timeout in minutes
+                    "",
+                    EventType.NewMail
+            );
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        System.out.println("Pull subscription created successfully!");
     }
 
-    private void mapParamsToFields() {
+    private Params mapParamsToFields() {
+        Params params;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            this.params = objectMapper.readValue(this.paramsJson, Params.class);
+            params = objectMapper.readValue(this.paramsJson, Params.class);
+            this.exposedParams = objectMapper.readValue(this.paramsJson, ExposedParams.class);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse params: " + e.getMessage(), e);
         }
+
+        return params;
     }
 
     @Override
     public Flux<Object> execute() {
-        return Flux.defer(() -> {
-            System.out.println("Executing action with id: " + this.actionId);
+
+        return Flux.create(sink -> {
             try {
-                // Create and configure the ExchangeService
-                // Initialize the Exchange Service
-                ExchangeService service = new ExchangeService(ExchangeVersion.Exchange2010_SP2);
-                service.setCredentials(new WebCredentials(params.getUsername(), params.getPassword()));
-                service.setUrl(new URI(params.getEws_url()));
+                // Fetch new events
+                GetEventsResults events = subscription.getEvents();
 
-                if (lastChecked == null) {
-                    ItemView view = new ItemView(1);
-
-                    view.getOrderBy().add(ItemSchema.DateTimeReceived, SortDirection.Descending);
-
-                    // Fetch the latest email
-                    FindItemsResults<Item> findResults = service.findItems(WellKnownFolderName.Inbox, view);
-
-                    service.loadPropertiesForItems(findResults, PropertySet.FirstClassProperties);
-                    // If we have results, update lastChecked with the timestamp of the most recent email
-                    if (findResults.getTotalCount() != 0) {
-                        Date latestEmailTime = findResults.getItems().get(0).getDateTimeReceived();
-                        lastChecked = latestEmailTime;
-                        System.out.println("First call: Latest email timestamp is " + latestEmailTime);
+                for (ItemEvent event : events.getItemEvents()) {  // ✅ Correct method
+                    if (event.getEventType() == EventType.NewMail) {
+                        try {
+                            // Fetch full email details
+                            EmailMessage email = EmailMessage.bind(service, event.getItemId());
+                            email.load();
+                            sink.next(email);  // Emit email as an event
+                        } catch (Exception e) {
+                            sink.error(new RuntimeException("Failed to fetch email details", e));
+                        }
                     }
-
-                    return Flux.empty(); // No emails returned on the first call
                 }
-
-                ItemView view = new ItemView(100);
-                view.getOrderBy().add(ItemSchema.DateTimeReceived, SortDirection.Descending);
-                Date adjustedLastChecked = new Date(lastChecked.getTime() + 1000); // Add 1 millisecond
-                SearchFilter filter = new SearchFilter.IsGreaterThan(ItemSchema.DateTimeReceived, adjustedLastChecked);
-                FindItemsResults<Item> findResults = service.findItems(WellKnownFolderName.Inbox, filter, view);
-
-                if (findResults.getTotalCount() != 0)
-                    lastChecked = findResults.getItems().get(0).getDateTimeReceived();
-
-                // Return the email subject lines in a Flux
-                return Flux.fromIterable(findResults)
-                        .filter(item -> item instanceof EmailMessage)
-                        .map(item -> {
-                            try {
-                                return EmailMessage.bind(service, item.getId());
-                            } catch (Exception e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
-                            }
-                            return "";
-                        });
+                sink.complete();  // Mark Flux as completed
             } catch (Exception e) {
-                return Flux.empty();
+                sink.error(new RuntimeException("Error fetching email events", e));
             }
         });
     }
@@ -113,8 +122,11 @@ public class EwsAction implements Action {
 
     @Override
     public Map<String, Object> getExposedParamsJson() {
-        return Collections.emptyMap();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        return objectMapper.convertValue(exposedParams, new TypeReference<Map<String, Object>>() {});
     }
+
 
     @Setter
     @Getter
@@ -132,5 +144,13 @@ public class EwsAction implements Action {
         @JsonProperty("password")
         private String password;
 
+    }
+
+    @Setter
+    @Getter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static class ExposedParams {
+        @JsonProperty("username")
+        private String username;
     }
 }

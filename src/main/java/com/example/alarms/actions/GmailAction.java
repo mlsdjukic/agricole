@@ -121,7 +121,6 @@ public class GmailAction implements Action {
     @Override
     public Flux<Object> execute() {
         return Flux.defer(() -> {
-            System.out.println("Executing action with id: " + this.actionId);
             try {
                 inbox.getMessageCount(); // Trigger server interaction to check for updates
 

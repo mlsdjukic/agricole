@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.core.env.Environment;
-@DependsOn("liquibase")
 @Component
 public class JobCoordinator {
 
@@ -48,15 +47,13 @@ public class JobCoordinator {
     private final Integer limit;
     private final Integer offset;
 
-    private final AlarmService alarmService;
 
-    public JobCoordinator(ActionService actionService, AlarmService alarmService, RuleMapper ruleMapper, Environment env, AlarmService alarmService1) {
+    public JobCoordinator(ActionService actionService, RuleMapper ruleMapper, Environment env) {
         this.actionService = actionService;
         this.ruleMapper = ruleMapper;
 
         this.limit = Integer.parseInt(env.getProperty("LIMIT", "100"));
         this.offset = Integer.parseInt(env.getProperty("OFFSET", "0"));
-        this.alarmService = alarmService1;
     }
 
     @PostConstruct
@@ -126,10 +123,9 @@ public class JobCoordinator {
         try {
             newAction = createAction(actionEntity);
             newRules = createRules(actionEntity.getRules());
-
-
         } catch (Exception e) {
             e.printStackTrace(); // Handle the exception or log it appropriately
+            return;
         }
 
         if (newAction != null) {
