@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
+import org.thymeleaf.context.Context;
 
 public class SendEmailReaction implements Reaction{
 
@@ -45,14 +46,14 @@ public class SendEmailReaction implements Reaction{
     public void execute(NotificationDTO notification) {
             System.out.println("Send email to " + parsedParams.getEmailAddress() + " with message: " + notification.getMessage());
 
-//            Context context = new Context();
-//
-//            context.setVariable("message", notification.getMessage());
-//            try {
-//                emailService.sendEmailWithHtmlTemplate(parsedParams.getEmailAddress(), "Rule satisfied", "email-template", context);
-//            } catch (Exception e) {
-//                throw new RuntimeException(e);
-//            }
+            Context context = new Context();
+
+            context.setVariable("message", notification.getMessage());
+            try {
+                emailService.sendEmailWithHtmlTemplate(parsedParams.getEmailAddress(), "Rule satisfied", "email-template", context);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
 
 
     }

@@ -12,12 +12,9 @@ import com.example.alarms.reactions.Reaction;
 import com.example.alarms.reactions.WriteAlarmToDBReaction;
 import com.example.alarms.rules.Rule;
 import com.example.alarms.services.ActionService;
-import com.example.alarms.services.AlarmService;
-import jakarta.validation.constraints.Max;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -64,13 +61,9 @@ public class JobCoordinator {
                 .subscribe();
     }
 
-    public Action createAction(ActionEntity actionEntity) {
-        try {
-            String actionClassName = "com.example.alarms.actions." + actionEntity.getType();
-            return (Action) createInstance(actionClassName, new Class<?>[]{String.class, Long.class}, actionEntity.getParams(), actionEntity.getId());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create Action: " + actionEntity.getType(), e);
-        }
+    public Action createAction(ActionEntity actionEntity) throws Exception {
+        String actionClassName = "com.example.alarms.actions." + actionEntity.getType();
+        return (Action) createInstance(actionClassName, new Class<?>[]{String.class, Long.class}, actionEntity.getParams(), actionEntity.getId());
     }
 
     public List<Rule> createRules(List<RuleEntity> ruleEntities) {
@@ -124,7 +117,13 @@ public class JobCoordinator {
             newAction = createAction(actionEntity);
             newRules = createRules(actionEntity.getRules());
         } catch (Exception e) {
-            e.printStackTrace(); // Handle the exception or log it appropriately
+            Throwable original = e.getCause(); // Unwraps the target
+            if (original != null) {
+                System.out.println("Failed to create Action with error: " + original.getMessage());
+            } else {
+                System.out.println("Caught Exception: " + e.getMessage());
+            }
+
             return;
         }
 

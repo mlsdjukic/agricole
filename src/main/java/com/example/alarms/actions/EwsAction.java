@@ -7,24 +7,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import microsoft.exchange.webservices.data.core.ExchangeService;
-import microsoft.exchange.webservices.data.core.PropertySet;
 import microsoft.exchange.webservices.data.core.enumeration.misc.ExchangeVersion;
 import microsoft.exchange.webservices.data.core.enumeration.notification.EventType;
 import microsoft.exchange.webservices.data.core.enumeration.property.WellKnownFolderName;
-import microsoft.exchange.webservices.data.core.enumeration.search.SortDirection;
 import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
-import microsoft.exchange.webservices.data.core.service.item.Item;
-import microsoft.exchange.webservices.data.core.service.schema.ItemSchema;
 import microsoft.exchange.webservices.data.credential.WebCredentials;
 import microsoft.exchange.webservices.data.notification.GetEventsResults;
 import microsoft.exchange.webservices.data.notification.ItemEvent;
-import microsoft.exchange.webservices.data.notification.NotificationEvent;
 import microsoft.exchange.webservices.data.notification.PullSubscription;
 import microsoft.exchange.webservices.data.property.complex.FolderId;
-import microsoft.exchange.webservices.data.search.FindItemsResults;
 
-import microsoft.exchange.webservices.data.search.ItemView;
-import microsoft.exchange.webservices.data.search.filter.SearchFilter;
 import reactor.core.publisher.Flux;
 
 import java.net.URI;
@@ -47,7 +39,7 @@ public class EwsAction implements Action {
     private ExchangeService service;
     private PullSubscription subscription;
 
-    public EwsAction(String jsonParams, Long actionId) {
+    public EwsAction(String jsonParams, Long actionId) throws Exception {
         this.paramsJson = jsonParams;
         this.actionId = actionId;
         this.params = mapParamsToFields();
@@ -61,16 +53,12 @@ public class EwsAction implements Action {
         }
 
         // Subscribe to Pull Notifications for Inbox
-        try {
-            this.subscription = service.subscribeToPullNotifications(
-                    List.of(new FolderId(WellKnownFolderName.Inbox)),
-                    5,  // Timeout in minutes
-                    "",
-                    EventType.NewMail
-            );
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        this.subscription = service.subscribeToPullNotifications(
+                List.of(new FolderId(WellKnownFolderName.Inbox)),
+                5,  // Timeout in minutes
+                "",
+                EventType.NewMail
+        );
 
         System.out.println("Pull subscription created successfully!");
     }
