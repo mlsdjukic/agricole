@@ -40,11 +40,11 @@ public class JobController {
     public Mono<ResponseEntity<Void>> update(@RequestBody ActionDTO action) {
 
         if (action.getId() == null) {
-            return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action ID cannot be null"));
+            return Mono.just(ResponseEntity.badRequest().build());
         }
 
-        return jobCoordinator.update(action).thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
-
+        return jobCoordinator.update(action)
+                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
     }
 
 
@@ -56,14 +56,15 @@ public class JobController {
             return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action ID cannot be null"));
         }
 
-        return jobCoordinator.delete(id).thenReturn(ResponseEntity.status(HttpStatus.NO_CONTENT).build());
-
+        return jobCoordinator.delete(id)
+                .thenReturn(ResponseEntity.status(HttpStatus.NO_CONTENT).build());
     }
 
 
     @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<JobsDTO> get() {
-        return jobCoordinator.getJobs();
+        return jobCoordinator.getJobs()
+                .onErrorResume(ex -> Flux.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error getting jobs", ex)));
     }
 }
 

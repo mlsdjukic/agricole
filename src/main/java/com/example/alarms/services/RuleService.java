@@ -26,7 +26,9 @@ public class RuleService {
                         .map(reactions -> {
                             ruleEntity.setReactions(new ArrayList<>(reactions));
                             return ruleEntity;
-                        }));
+                        }))
+                .onErrorResume(ex -> Mono.error(new RuntimeException("Failed to fetch rule", ex)));
+
     }
 
 
@@ -60,10 +62,17 @@ public class RuleService {
         return Mono.fromCallable(() -> JsonUtils.toJson(ruleDTO.getRule()))
                 .flatMap(ruleJson -> ruleRepository.save(new RuleEntity(null, ruleDTO.getName(), ruleJson, actionId, null, null, null)))
                 .flatMap(savedRule -> saveReactions(savedRule, ruleDTO)
-                        .thenReturn(savedRule));
+                    .thenReturn(savedRule)
+                    .onErrorResume(ex -> reactionService.deleteByRuleId(savedRule.getId())
+                            .then(Mono.error(new RuntimeException("Failed to save reactions", ex)))
+
+                ));
     }
 
     private Mono<Void> saveReactions(RuleEntity savedRule, RuleDTO ruleDTO) {
+        if (ruleDTO.getReactions().isEmpty()) {
+            return Mono.empty();
+        }
         return Flux.fromIterable(ruleDTO.getReactions())
                 .flatMap(reactionDTO -> Mono.fromCallable(() -> JsonUtils.toJson(reactionDTO.getParams()))
                         .map(reactionJson -> new ReactionEntity(null, reactionDTO.getName(), reactionJson, savedRule.getId(), null, null))
@@ -74,7 +83,8 @@ public class RuleService {
                     savedRule.setReactions(savedReactions);
                     return savedRule;
                 })
-                .then();
+                .then()
+                .onErrorResume(ex -> Mono.error(new RuntimeException(ex)));
     }
 
     /**
@@ -109,6 +119,8 @@ public class RuleService {
                 .flatMap(ruleEntity ->
                         reactionService.deleteByRuleId(ruleEntity.getId()) // Delete reactions by rule ID
                 )
-                .then(ruleRepository.deleteByActionId(actionId));
+                .then(ruleRepository.deleteByActionId(actionId))
+                .onErrorResume(ex -> Mono.error(new RuntimeException(ex)));
+
     }
 }

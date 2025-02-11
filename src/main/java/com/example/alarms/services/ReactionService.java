@@ -43,7 +43,11 @@ public class ReactionService {
                 .map(this::convertToDTO);
     }
 
-    public Flux<ReactionEntity> saveAll(List<ReactionEntity> reactionEntities) {return reactionRepository.saveAll(reactionEntities);}
+    public Flux<ReactionEntity> saveAll(List<ReactionEntity> reactionEntities) {
+        return reactionRepository.saveAll(reactionEntities)
+                .onErrorResume(ex -> Flux.error(new RuntimeException("Error saving reactions", ex))  // Propagate the error up
+                );
+    }
 
     public Mono<ReactionDTO> updateReaction(Long id, ReactionDTO reactionDTO) {
         return reactionRepository.findById(id)
@@ -59,9 +63,16 @@ public class ReactionService {
         return reactionRepository.deleteById(id);
     }
 
-    public Flux<ReactionEntity> findByRuleId(Long ruleId) { return reactionRepository.findByRuleId(ruleId);}
+    public Flux<ReactionEntity> findByRuleId(Long ruleId) {
+        return reactionRepository.findByRuleId(ruleId)
+                .onErrorResume(ex -> Mono.error(new IllegalArgumentException("No rule with this id", ex)));
+    }
 
-    public Mono<Void> deleteByRuleId(Long ruleId) { return reactionRepository.deleteByRuleId(ruleId);}
+    public Mono<Void> deleteByRuleId(Long ruleId) {
+        return reactionRepository.deleteByRuleId(ruleId)
+                .onErrorResume(ex -> Mono.error(new IllegalArgumentException("No rule with this id", ex)));
+
+    }
 
     private ReactionDTO convertToDTO(ReactionEntity entity) {
         ReactionDTO dto = modelMapper.map(entity, ReactionDTO.class);

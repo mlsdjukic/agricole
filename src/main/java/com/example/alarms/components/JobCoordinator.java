@@ -161,10 +161,12 @@ public class JobCoordinator {
     public void stopAction(Long actionId) {
         // Retrieve the subscription and dispose it if it exists
         JobDescription jobDescription = subscriptions.get(actionId);
-        Disposable subscription = jobDescription.getDisposable();
-        if (subscription != null) {
-            subscription.dispose();
-            subscriptions.remove(actionId); // Optionally, remove the entry from the map after disposing
+        if (jobDescription != null) {
+            Disposable subscription = jobDescription.getDisposable();
+            if (subscription != null) {
+                subscription.dispose();
+                subscriptions.remove(actionId); // Optionally, remove the entry from the map after disposing
+            }
         }
     }
 
@@ -186,23 +188,27 @@ public class JobCoordinator {
                 .flatMap(actionEntity -> {
                     this.scheduleJob(actionEntity);
                     return Mono.just(actionEntity);
-                });
+                })
+                .onErrorResume(ex -> Mono.error(new RuntimeException("Failed to create action", ex)));
 
     }
 
-    public Mono<ActionEntity> update(ActionDTO action){
-        this.stopAction(action.getId());
-        return actionService.update(action)
-                .flatMap(actionEntity -> {;
+    public Mono<ActionEntity> update(ActionDTO action) {
+        return Mono.fromRunnable(() -> this.stopAction(action.getId()))  // Ensures non-blocking execution
+                .then(actionService.update(action)) // Continues execution if stopAction succeeds
+                .flatMap(actionEntity -> {
                     this.scheduleJob(actionEntity);
                     return Mono.just(actionEntity);
-                });
-
+                })
+                .onErrorResume(e -> Mono.error(new RuntimeException("Failed to update action", e)));
     }
+
 
     public Mono<Void> delete(Long actionId){
         this.stopAction(actionId);
-        return actionService.deleteAction(actionId);
+        return actionService.deleteAction(actionId)
+                .onErrorResume(ex -> Mono.error(new RuntimeException("Failed to delete action", ex)));
+
 
 
     }
@@ -212,7 +218,9 @@ public class JobCoordinator {
                 .flatMap(actionEntity -> {
                         JobDescription jobDescription = subscriptions.get(actionEntity.getId());
                         return Mono.just(jobDescription.getJob());
-                });
+                })
+                .onErrorResume(ex -> Mono.error(new RuntimeException(ex)));
+
     }
 
     @Getter
