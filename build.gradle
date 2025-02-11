@@ -36,8 +36,9 @@ dependencies {
 	implementation 'org.modelmapper:modelmapper:3.2.2'
 	implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
 	implementation group: 'javax.xml.ws', name: 'jaxws-api', version: '2.3.1'
-	implementation 'javax.mail:mail:1.5.0-b01'
-
+//	implementation 'javax.mail:mail:1.5.0-b01'
+//	implementation 'org.eclipse.angus:angus-mail:2.0.2'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'

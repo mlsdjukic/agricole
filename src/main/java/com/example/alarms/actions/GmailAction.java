@@ -7,12 +7,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import reactor.core.publisher.Flux;
-
-import javax.mail.*;
-import javax.mail.event.ConnectionEvent;
-import javax.mail.event.ConnectionListener;
-import javax.mail.event.MessageCountEvent;
-import javax.mail.event.MessageCountListener;
+import jakarta.mail.event.ConnectionEvent;
+import jakarta.mail.*;
+import jakarta.mail.event.ConnectionListener;
+import jakarta.mail.event.MessageCountEvent;
+import jakarta.mail.event.MessageCountListener;
 import java.util.*;
 
 @Setter

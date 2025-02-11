@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 @Service
 @Transactional
 public class ReactionService {
@@ -41,6 +43,8 @@ public class ReactionService {
                 .map(this::convertToDTO);
     }
 
+    public Flux<ReactionEntity> saveAll(List<ReactionEntity> reactionEntities) {return reactionRepository.saveAll(reactionEntities);}
+
     public Mono<ReactionDTO> updateReaction(Long id, ReactionDTO reactionDTO) {
         return reactionRepository.findById(id)
                 .flatMap(existing -> {
@@ -54,6 +58,10 @@ public class ReactionService {
     public Mono<Void> deleteReaction(Long id) {
         return reactionRepository.deleteById(id);
     }
+
+    public Flux<ReactionEntity> findByRuleId(Long ruleId) { return reactionRepository.findByRuleId(ruleId);}
+
+    public Mono<Void> deleteByRuleId(Long ruleId) { return reactionRepository.deleteByRuleId(ruleId);}
 
     private ReactionDTO convertToDTO(ReactionEntity entity) {
         ReactionDTO dto = modelMapper.map(entity, ReactionDTO.class);

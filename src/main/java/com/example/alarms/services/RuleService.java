@@ -1,5 +1,8 @@
 package com.example.alarms.services;
 
+import com.example.alarms.dto.JsonUtils;
+import com.example.alarms.dto.RuleDTO;
+import com.example.alarms.entities.ReactionEntity;
 import com.example.alarms.entities.RuleEntity;
 import com.example.alarms.repositories.RuleRepository;
 import lombok.RequiredArgsConstructor;
@@ -7,11 +10,25 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
+
 @RequiredArgsConstructor
 @Service
 public class RuleService {
 
     private final RuleRepository ruleRepository;
+    private final ReactionService reactionService;
+
+    public  Flux<RuleEntity> getByActionId(Long actionID){
+        return ruleRepository.findByActionId(actionID)
+                .flatMap(ruleEntity -> reactionService.findByRuleId(ruleEntity.getId())
+                        .collectList()
+                        .map(reactions -> {
+                            ruleEntity.setReactions(new ArrayList<>(reactions));
+                            return ruleEntity;
+                        }));
+    }
+
 
     /**
      * Fetch all rules.
@@ -35,11 +52,29 @@ public class RuleService {
     /**
      * Create a new rule.
      *
-     * @param ruleEntity RuleEntity to be created
+     * @param ruleDTO RuleDTO to be created
      * @return Mono of RuleEntity
      */
-    public Mono<RuleEntity> createRule(RuleEntity ruleEntity) {
-        return ruleRepository.save(ruleEntity);
+    public Mono<RuleEntity> create(RuleDTO ruleDTO, Long actionId) {
+
+        return Mono.fromCallable(() -> JsonUtils.toJson(ruleDTO.getRule()))
+                .flatMap(ruleJson -> ruleRepository.save(new RuleEntity(null, ruleDTO.getName(), ruleJson, actionId, null, null, null)))
+                .flatMap(savedRule -> saveReactions(savedRule, ruleDTO)
+                        .thenReturn(savedRule));
+    }
+
+    private Mono<Void> saveReactions(RuleEntity savedRule, RuleDTO ruleDTO) {
+        return Flux.fromIterable(ruleDTO.getReactions())
+                .flatMap(reactionDTO -> Mono.fromCallable(() -> JsonUtils.toJson(reactionDTO.getParams()))
+                        .map(reactionJson -> new ReactionEntity(null, reactionDTO.getName(), reactionJson, savedRule.getId(), null, null))
+                )
+                .collectList()
+                .flatMap(reactionEntities -> reactionService.saveAll(reactionEntities).collectList())
+                .map(savedReactions -> {
+                    savedRule.setReactions(savedReactions);
+                    return savedRule;
+                })
+                .then();
     }
 
     /**
@@ -67,5 +102,13 @@ public class RuleService {
      */
     public Mono<Void> deleteRule(Long id) {
         return ruleRepository.deleteById(id);
+    }
+
+    public Mono<Void> deleteByActionId(Long actionId) {
+        return ruleRepository.findByActionId(actionId)
+                .flatMap(ruleEntity ->
+                        reactionService.deleteByRuleId(ruleEntity.getId()) // Delete reactions by rule ID
+                )
+                .then(ruleRepository.deleteByActionId(actionId));
     }
 }
