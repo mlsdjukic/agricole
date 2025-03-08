@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import jakarta.mail.event.ConnectionEvent;
 import jakarta.mail.*;
@@ -14,6 +15,7 @@ import jakarta.mail.event.MessageCountEvent;
 import jakarta.mail.event.MessageCountListener;
 import java.util.*;
 
+@Slf4j
 @Setter
 @Getter
 public class GmailAction implements Action {
@@ -41,7 +43,7 @@ public class GmailAction implements Action {
         this.actionId = actionId;
         mapParamsToFields();
 
-        receivedMessages = new ArrayList<Message>();
+        receivedMessages = new ArrayList<>();
 
         Properties properties = new Properties();
         properties.put("mail.imap.host", IMAP_HOST);
@@ -57,7 +59,7 @@ public class GmailAction implements Action {
             store.addConnectionListener(new ConnectionListener() {
                 @Override
                 public void opened(ConnectionEvent e) {
-                    System.out.println("Connection opened: " + e.getSource());
+                    log.info("Connection opened: {}", e.getSource());
                 }
 
                 @Override
@@ -91,13 +93,12 @@ public class GmailAction implements Action {
                 @Override
                 public void messagesAdded(MessageCountEvent event) {
                     Message[] messages = event.getMessages();
-                    System.out.println("New messages arrived: " + messages.length);
                     receivedMessages.addAll(Arrays.asList(messages));
                 }
 
                 @Override
                 public void messagesRemoved(MessageCountEvent event) {
-                    System.out.println("Messages removed.");
+                    log.info("Messages removed.");
                 }
             });
 
@@ -143,7 +144,7 @@ public class GmailAction implements Action {
     public Map<String, Object> getExposedParamsJson() {
         ObjectMapper objectMapper = new ObjectMapper();
 
-        return objectMapper.convertValue(exposedParams, new TypeReference<Map<String, Object>>() {});
+        return objectMapper.convertValue(exposedParams, new TypeReference<>() {});
     }
 
     @Setter

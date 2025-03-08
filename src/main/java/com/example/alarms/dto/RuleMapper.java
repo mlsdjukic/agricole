@@ -6,8 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-
 @Component
 public class RuleMapper {
 
@@ -34,7 +32,7 @@ public class RuleMapper {
         RuleDTO dto = new RuleDTO();
         try {
             // Convert JSON string to Map<String, Object>
-            dto.setRule(objectMapper.readValue(entity.getRule(), new TypeReference<Map<String, Object>>() {}));
+            dto.setRule(objectMapper.readValue(entity.getRule(), new TypeReference<>() {}));
         } catch (Exception e) {
             throw new RuntimeException("Error deserializing JSON to rule map", e);
         }

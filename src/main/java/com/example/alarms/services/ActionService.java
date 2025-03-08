@@ -7,13 +7,10 @@ import com.example.alarms.entities.ActionEntity;
 import com.example.alarms.entities.RuleEntity;
 import com.example.alarms.repositories.ActionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.util.*;
 
 @RequiredArgsConstructor
 @Service
@@ -21,21 +18,6 @@ public class ActionService {
 
     private final ActionRepository actionRepository;
     private final RuleService ruleService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public Flux<ActionEntity> findActionsInRange(int limit, int offset) {
-        return actionRepository.findActionsInRange(limit, offset)
-            .flatMap(action ->
-                ruleService.getByActionId(action.getId())
-                    .collectList()
-                    .map(rules -> {
-                        action.setRules(new ArrayList<>(rules));
-                        return action;
-                    })
-                )
-                .onErrorResume(ex -> Mono.error(new RuntimeException("Failed to fetch actions", ex)));
-
-    }
 
     public Mono<ActionEntity> create(ActionDTO action, Long userId) {
         return Mono.fromCallable(() -> JsonUtils.toJson(action.getParams()))
@@ -124,20 +106,6 @@ public class ActionService {
     }
 
 
-
-
-    /**
-     * Fetch all actions.
-     *
-     * @return Flux of ActionEntity
-     */
-    public Flux<ActionEntity> getAllActions() {
-        return actionRepository.findAll()
-                .flatMap(this::attachRulesToAction)
-                .onErrorResume(ex -> Mono.error(new RuntimeException("Failed to fetch actions", ex)));
-
-    }
-
     /**
      * Fetch an action by its ID.
      *
@@ -147,32 +115,6 @@ public class ActionService {
     public Mono<ActionEntity> getActionById(Long id) {
         return actionRepository.findById(id)
                 .flatMap(this::attachRulesToAction);
-    }
-
-    /**
-     * Create a new action.
-     *
-     * @param actionEntity ActionEntity to be created
-     * @return Mono of ActionEntity
-     */
-    public Mono<ActionEntity> createAction(ActionEntity actionEntity) {
-        return actionRepository.save(actionEntity);
-    }
-
-    /**
-     * Update an existing action.
-     *
-     * @param id Action ID
-     * @param updatedAction Updated ActionEntity
-     * @return Mono of ActionEntity
-     */
-    public Mono<ActionEntity> updateAction(Long id, ActionEntity updatedAction) {
-        return actionRepository.findById(id)
-                .flatMap(existingAction -> {
-                    existingAction.setType(updatedAction.getType());
-                    existingAction.setParams(updatedAction.getParams());
-                    return actionRepository.save(existingAction);
-                });
     }
 
     /**

@@ -1,13 +1,12 @@
 package com.example.alarms.rules;
 
-
-import com.example.alarms.dto.AlarmRequestDTO;
 import com.example.alarms.dto.NotificationDTO;
 import com.example.alarms.reactions.Reaction;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -21,7 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-
+@Slf4j
 public class FindPatternInGmail implements  Rule{
 
     private final Long ruleId;
@@ -47,7 +46,7 @@ public class FindPatternInGmail implements  Rule{
 
     @Override
     public void execute(Object data) {
-        System.out.println("Executing rule with id: " + this.ruleId);
+        log.info("Executing rule with id: {}", this.ruleId);
 
         if (data instanceof Message email) {
             long currentTime = System.currentTimeMillis();
@@ -76,12 +75,12 @@ public class FindPatternInGmail implements  Rule{
                         container = new StringBuilder(Arrays.toString(email.getFrom()));
                         break;
                     default:
-                        System.out.println("Unsupported location " + params.getLocation());
+                        log.error("Unsupported location {}", params.getLocation());
                         return;
                 }
 
                 if (container.toString().contains(params.getPattern())) {
-                    System.out.println("pattern " + params.getPattern() + " found!");
+                    log.info("pattern {} found!", params.getPattern());
                     patternTimestamps.add(currentTime);
 
                     // Remove timestamps outside the interval
@@ -95,16 +94,14 @@ public class FindPatternInGmail implements  Rule{
                     }
                 }
             } catch (MessagingException | IOException e) {
-                e.printStackTrace();
+                log.error("Error executing rule: {}", e.getMessage() );
             }
 
         }
     }
 
     private void react() {
-        reactions.forEach(reaction -> {
-            reaction.execute(new NotificationDTO(this.ruleId, params.alarmMessage));
-        });
+        reactions.forEach(reaction -> reaction.execute(new NotificationDTO(this.ruleId, params.alarmMessage)));
     }
 
     @Setter

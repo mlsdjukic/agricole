@@ -27,40 +27,10 @@ public class ReactionService {
         this.modelMapper = modelMapper;
     }
 
-    public Flux<ReactionDTO> getAllReactions() {
-        return reactionRepository.findAll()
-                .map(this::convertToDTO);
-    }
-
-    public Mono<ReactionDTO> getReactionById(Long id) {
-        return reactionRepository.findById(id)
-                .map(this::convertToDTO);
-    }
-
-    public Mono<ReactionDTO> createReaction(ReactionDTO reactionDTO) {
-        ReactionEntity entity = convertToEntity(reactionDTO);
-        return reactionRepository.save(entity)
-                .map(this::convertToDTO);
-    }
-
     public Flux<ReactionEntity> saveAll(List<ReactionEntity> reactionEntities) {
         return reactionRepository.saveAll(reactionEntities)
                 .onErrorResume(ex -> Flux.error(new RuntimeException("Error saving reactions", ex))  // Propagate the error up
                 );
-    }
-
-    public Mono<ReactionDTO> updateReaction(Long id, ReactionDTO reactionDTO) {
-        return reactionRepository.findById(id)
-                .flatMap(existing -> {
-                    existing.setName(reactionDTO.getName());
-                    existing.setParams(JsonUtils.toJson(reactionDTO.getParams())); // Convert Map to JSON
-                    return reactionRepository.save(existing);
-                })
-                .map(this::convertToDTO);
-    }
-
-    public Mono<Void> deleteReaction(Long id) {
-        return reactionRepository.deleteById(id);
     }
 
     public Flux<ReactionEntity> findByRuleId(Long ruleId) {

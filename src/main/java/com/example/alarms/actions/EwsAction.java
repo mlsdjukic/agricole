@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import microsoft.exchange.webservices.data.core.ExchangeService;
 import microsoft.exchange.webservices.data.core.enumeration.misc.ExchangeVersion;
 import microsoft.exchange.webservices.data.core.enumeration.notification.EventType;
@@ -23,6 +24,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 
+@Slf4j
 @Setter
 @Getter
 public class EwsAction implements Action {
@@ -60,7 +62,7 @@ public class EwsAction implements Action {
                 EventType.NewMail
         );
 
-        System.out.println("Pull subscription created successfully!");
+        log.info("Pull subscription created successfully!");
     }
 
     private Params mapParamsToFields() {
@@ -112,7 +114,7 @@ public class EwsAction implements Action {
     public Map<String, Object> getExposedParamsJson() {
         ObjectMapper objectMapper = new ObjectMapper();
 
-        return objectMapper.convertValue(exposedParams, new TypeReference<Map<String, Object>>() {});
+        return objectMapper.convertValue(exposedParams, new TypeReference<>() {});
     }
 
 

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import microsoft.exchange.webservices.data.core.exception.service.local.ServiceLocalException;
 import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
 import reactor.core.publisher.Mono;
@@ -15,11 +16,11 @@ import reactor.core.scheduler.Schedulers;
 import java.util.ArrayList;
 import java.util.List;
 
-
+@Slf4j
 public class FindPatternInEws implements  Rule{
 
-    private final String defaultLocation = "body";
-    private final String defaultAlarmMessage = "Pattern found";
+    private static final String defaultLocation = "body";
+    private static final String defaultAlarmMessage = "Pattern found";
 
     private final Long ruleId;
     private final List<Long> patternTimestamps;
@@ -57,7 +58,7 @@ public class FindPatternInEws implements  Rule{
 
     @Override
     public void execute(Object data) {
-        System.out.println("Executing rule with id: " + this.ruleId);
+        log.info("Executing rule with id: {}", this.ruleId);
 
         if (!(data instanceof EmailMessage email)) {
             return;
@@ -72,7 +73,7 @@ public class FindPatternInEws implements  Rule{
             processPatternMatching(container);
 
         } catch (ServiceLocalException e) {
-            e.printStackTrace();
+            log.error("Error executing rule: {}", e.getMessage() );
         }
     }
 
@@ -82,7 +83,7 @@ public class FindPatternInEws implements  Rule{
             case "subject" -> email.getSubject();
             case "sender" -> email.getSender().toString();
             default -> {
-                System.out.println("Unsupported location " + location);
+                log.error("Unsupported location {}", location);
                 yield null;
             }
         };
@@ -108,9 +109,7 @@ public class FindPatternInEws implements  Rule{
     }
 
     private void react() {
-        reactions.forEach(reaction -> {
-            reaction.execute(new NotificationDTO(this.ruleId, params.alarmMessage));
-        });
+        reactions.forEach(reaction -> reaction.execute(new NotificationDTO(this.ruleId, params.alarmMessage)));
     }
 
     @Setter

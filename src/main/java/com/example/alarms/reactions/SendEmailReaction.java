@@ -7,21 +7,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.thymeleaf.context.Context;
 
+@Slf4j
 public class SendEmailReaction implements Reaction{
 
     private Params parsedParams;
 
-    private final String params;
-    private final String name;
     private final EmailService emailService;
-
     private final Long ruleId;
 
     public SendEmailReaction(String params, String name, Long ruleId) {
-        this.params = params;
-        this.name = name;
         this.ruleId = ruleId;
         this.emailService = ApplicationContextProvider.getApplicationContext().getBean(EmailService.class);
 
@@ -44,7 +41,7 @@ public class SendEmailReaction implements Reaction{
 
     @Override
     public void execute(NotificationDTO notification) {
-            System.out.println("Send email to " + parsedParams.getEmailAddress() + " with message: " + notification.getMessage());
+            log.info("Send email to {} with message: {}", parsedParams.getEmailAddress(), notification.getMessage());
 
             Context context = new Context();
 
