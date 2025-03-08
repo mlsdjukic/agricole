@@ -11,6 +11,6 @@ import java.util.Map;
 public class RuleDTO {
     private Long id;
     private String name;
-    private Map<String,Object> rule;
+    private Map<String,Object> definition;
     private List<ReactionDTO> reactions;
 }

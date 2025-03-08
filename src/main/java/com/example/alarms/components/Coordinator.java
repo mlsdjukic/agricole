@@ -187,7 +187,7 @@ public class Coordinator {
         try {
             return (Rule) createInstance(ruleClassName,
                     new Class<?>[]{String.class, Long.class, List.class},
-                    ruleEntity.getRule(), ruleEntity.getId(), reactions);
+                    ruleEntity.getDefinition(), ruleEntity.getId(), reactions);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create Rule: " + ruleEntity.getName(), e);
         }

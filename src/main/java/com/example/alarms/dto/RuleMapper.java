@@ -19,7 +19,7 @@ public class RuleMapper {
         RuleEntity entity = new RuleEntity();
         try {
             // Convert Map to JSON string
-            entity.setRule(objectMapper.writeValueAsString(dto.getRule()));
+            entity.setDefinition(objectMapper.writeValueAsString(dto.getDefinition()));
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error serializing rule map to JSON", e);
         }
@@ -32,7 +32,7 @@ public class RuleMapper {
         RuleDTO dto = new RuleDTO();
         try {
             // Convert JSON string to Map<String, Object>
-            dto.setRule(objectMapper.readValue(entity.getRule(), new TypeReference<>() {}));
+            dto.setDefinition(objectMapper.readValue(entity.getDefinition(), new TypeReference<>() {}));
         } catch (Exception e) {
             throw new RuntimeException("Error deserializing JSON to rule map", e);
         }

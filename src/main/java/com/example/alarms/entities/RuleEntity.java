@@ -23,7 +23,7 @@ public class RuleEntity {
     @Id
     private Long id;
     private String name;
-    private String rule;
+    private String definition;
 
     private Long actionId;
 

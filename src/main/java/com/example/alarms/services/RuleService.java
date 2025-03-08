@@ -59,7 +59,7 @@ public class RuleService {
      */
     public Mono<RuleEntity> create(RuleDTO ruleDTO, Long actionId) {
 
-        return Mono.fromCallable(() -> JsonUtils.toJson(ruleDTO.getRule()))
+        return Mono.fromCallable(() -> JsonUtils.toJson(ruleDTO.getDefinition()))
                 .flatMap(ruleJson -> ruleRepository.save(new RuleEntity(null, ruleDTO.getName(), ruleJson, actionId, null, null, null)))
                 .flatMap(savedRule -> saveReactions(savedRule, ruleDTO)
                     .thenReturn(savedRule)
@@ -98,7 +98,7 @@ public class RuleService {
         return ruleRepository.findById(id)
                 .flatMap(existingRule -> {
                     existingRule.setName(updatedRule.getName());
-                    existingRule.setRule(updatedRule.getRule());
+                    existingRule.setDefinition(updatedRule.getDefinition());
                     existingRule.setActionId(updatedRule.getActionId());
                     return ruleRepository.save(existingRule);
                 });

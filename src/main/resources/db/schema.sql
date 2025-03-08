@@ -151,7 +151,7 @@ CREATE TABLE public.rules (
     id bigint NOT NULL,
     action_id bigint NOT NULL,
     name character varying(100) NOT NULL,
-    rule character varying(5000) NOT NULL,
+    definition character varying(5000) NOT NULL,
     created_date timestamp without time zone DEFAULT now() NOT NULL,
     last_modified_date timestamp without time zone DEFAULT now() NOT NULL
 );
