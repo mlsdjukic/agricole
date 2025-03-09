@@ -1,6 +1,7 @@
 package com.example.alarms.repositories;
 
 import com.example.alarms.entities.ActionEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
@@ -20,5 +21,6 @@ public interface ActionRepository extends ReactiveCrudRepository<ActionEntity, L
     LIMIT :limit OFFSET :offset
     """)
     Flux<ActionEntity> findActionsInRange(@Param("limit") int limit, @Param("offset") int offset);
+    Flux<ActionEntity> findAllBy(Pageable pageable);
 
 }

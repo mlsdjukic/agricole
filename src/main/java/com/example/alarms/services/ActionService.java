@@ -1,17 +1,29 @@
 package com.example.alarms.services;
 
 import com.example.alarms.dto.ActionDTO;
+import com.example.alarms.dto.JobsDTO;
 import com.example.alarms.dto.JsonUtils;
 import com.example.alarms.dto.RuleDTO;
 import com.example.alarms.entities.ActionEntity;
 import com.example.alarms.entities.RuleEntity;
+import com.example.alarms.exceptions.*;
 import com.example.alarms.repositories.ActionRepository;
+import com.example.alarms.services.utils.ActionValidator;
+import com.example.alarms.services.utils.ValidationResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+import java.util.Map;
+
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class ActionService {
@@ -20,42 +32,64 @@ public class ActionService {
     private final RuleService ruleService;
 
     public Mono<ActionEntity> create(ActionDTO action, Long userId) {
+        List<String> validationErrors = ActionValidator.validateCreateUpdateRequest(action);
+
+        if (!validationErrors.isEmpty()) {
+            // Throw an exception with validation errors
+            String errorMessage = String.join("; ", validationErrors);
+            return Mono.error(new InvalidActionException(errorMessage));
+        }
         return Mono.fromCallable(() -> JsonUtils.toJson(action.getParams()))
                 .flatMap(jsonParams -> actionRepository.save(new ActionEntity(null, action.getType(), jsonParams, userId, null, null, null)))
-                .flatMap(savedAction -> {
-                    // Explicitly check if action.getRules() is null to prevent the NPE
-                    if (action.getRules() == null) {
-                        return actionRepository.delete(savedAction)
-                                .then(Mono.error(new RuntimeException("Failed to create action due to null rules")));
-                    }
-                    // Continue processing if action.getRules() is not null
-                    return Flux.fromIterable(action.getRules())
-                            .flatMap(ruleDTO -> saveRuleAndReactions(savedAction, ruleDTO))
-                            .collectList()
-                            .map(rules -> {
-                                savedAction.setRules(rules);
-                                return savedAction;
-                            });
-                })
-                .onErrorMap(JsonProcessingException.class, e -> new RuntimeException("Error serializing action parameters", e))
-                .onErrorMap(RuntimeException.class, e -> new RuntimeException("Error serializing rule or reaction", e));
+                .flatMap(savedAction ->
+                        Flux.fromIterable(action.getRules())
+                        .flatMap(ruleDTO -> saveRuleAndReactions(savedAction, ruleDTO))
+                        .collectList()
+                        .map(rules -> {
+                            savedAction.setRules(rules);
+                            return savedAction;
+                        }))
+                .onErrorMap(JsonProcessingException.class, e ->
+                        new SerializationException("Error serializing action parameters", e))
+                .onErrorMap(e -> !(e instanceof InvalidActionException ||
+                                e instanceof UserNotFoundException ||
+                                e instanceof RuleProcessingException ||
+                                e instanceof SerializationException),
+                        e -> new RuntimeException("Unexpected error creating action", e));
     }
 
+    public Mono<ActionEntity> update(ActionDTO action, Long id) {
+        if (action == null) {
+            return Mono.error(new InvalidActionException("Action cannot be null"));
+        }
 
+        if (id == null) {
+            return Mono.error(new InvalidActionException("Action ID cannot be null"));
+        }
 
+        List<String> validationErrors = ActionValidator.validateCreateUpdateRequest(action);
 
+        if (!validationErrors.isEmpty()) {
+            // Throw an exception with validation errors
+            String errorMessage = String.join("; ", validationErrors);
+            log.warn("Action validation failed: {}", errorMessage);
+            return Mono.error(new InvalidActionException(errorMessage));
+        }
 
-
-    public Mono<ActionEntity> update(ActionDTO action) {
         return Mono.fromCallable(() -> JsonUtils.toJson(action.getParams()))
                 .flatMap(jsonParams ->
-                        actionRepository.findById(action.getId())
+                        actionRepository.findById(id)
+                                .switchIfEmpty(Mono.error(new EntityNotFoundException("Action not found with ID: " + id)))
                                 .flatMap(existingAction -> updateActionAndSave(existingAction, action, jsonParams))
-                                .switchIfEmpty(Mono.error(new RuntimeException("Action not found")))
                 )
-                .onErrorResume(JsonProcessingException.class, e ->
-                        Mono.error(new RuntimeException("Error serializing action parameters", e))
-                );
+                .onErrorMap(JsonProcessingException.class, e ->
+                        new SerializationException("Error serializing action parameters", e))
+                .onErrorMap(e -> !(e instanceof InvalidActionException ||
+                                e instanceof UserNotFoundException ||
+                                e instanceof RuleProcessingException ||
+                                e instanceof EntityNotFoundException ||
+                                e instanceof SerializationException),
+                        e -> new RuntimeException("Unexpected error creating action", e));
     }
 
 
@@ -67,24 +101,24 @@ public class ActionService {
         // Save the updated action
         return actionRepository.save(existingAction)
                 .flatMap(savedAction -> updateRulesAndReactions(savedAction, action))
-                .onErrorResume(ex -> Mono.error(new RuntimeException("Failed to update action", ex)));
+                .doOnError(e -> log.error("Failed to update action {}: {}", existingAction.getId(), e.getMessage()));
 
     }
 
     private Mono<ActionEntity> updateRulesAndReactions(ActionEntity savedAction, ActionDTO action) {
+        if (savedAction == null) {
+            return Mono.error(new InvalidActionException("Saved action cannot be null"));
+        }
+
+        if (action == null || action.getRules() == null) {
+            return Mono.error(new InvalidActionException("Action or rules cannot be null"));
+        }
+
         // First, delete existing reactions associated with the rules
         return ruleService.deleteByActionId(savedAction.getId())
                 .then(saveNewRules(savedAction, action))
                 .thenReturn(savedAction)
-                .onErrorResume(ex -> Mono.error(new RuntimeException("Failed to update rules and reactions", ex)));
-
-    }
-
-    private Mono<ActionEntity> deleteRulesAndReactions(ActionEntity savedAction) {
-        // First, delete existing reactions associated with the rules
-        return ruleService.deleteByActionId(savedAction.getId())
-                .thenReturn(savedAction)
-                .onErrorResume(ex -> Mono.error(new IllegalArgumentException("Failed to delete rule with id", ex)));
+                .onErrorResume(ex -> Mono.error(new RuleProcessingException("Failed to update rules and reactions", ex)));
 
     }
 
@@ -94,17 +128,35 @@ public class ActionService {
                 .collectList() // Collect into a List<RuleEntity>
                 .doOnNext(savedAction::setRules) // Set rules to ActionEntity
                 .then() // Return Mono<Void>
-                .onErrorResume(ex -> Mono.error(new RuntimeException("Failed to save rules", ex)));
+                .onErrorResume(ex -> Mono.error(new RuleProcessingException("Failed to save rules", ex)));
     }
 
     private Mono<RuleEntity> saveRuleAndReactions(ActionEntity savedAction, RuleDTO ruleDTO) {
-        return ruleService.create(ruleDTO, savedAction.getId())
-                .onErrorResume(ex -> ruleService.deleteByActionId(savedAction.getId())
-                        .then(Mono.error(new RuntimeException("Failed to save rules and reactions", ex)))
+        if (savedAction == null) {
+            return Mono.error(new InvalidActionException("Action cannot be null"));
+        }
 
-                );
+        if (ruleDTO == null) {
+            return Mono.error(new InvalidActionException("Rule cannot be null"));
+        }
+
+        return ruleService.create(ruleDTO, savedAction.getId())
+                .onErrorResume(ex -> {
+                    // Log error but continue with other rules
+                    log.error("Failed to save rule for action {}: {}",
+                            savedAction.getId(), ex.getMessage());
+                    return Mono.empty(); // Skip this rule but continue with others
+                });
     }
 
+
+    private Mono<ActionEntity> deleteRulesAndReactions(ActionEntity savedAction) {
+        // First, delete existing reactions associated with the rules
+        return ruleService.deleteByActionId(savedAction.getId())
+                .thenReturn(savedAction)
+                .onErrorResume(ex -> Mono.error(new RuleProcessingException("Failed to delete rule with id", ex)));
+
+    }
 
     /**
      * Fetch an action by its ID.
@@ -138,10 +190,54 @@ public class ActionService {
      * @return Mono of ActionEntity with rules
      */
     private Mono<ActionEntity> attachRulesToAction(ActionEntity action) {
+        if (action == null) {
+            return Mono.error(new IllegalArgumentException("Action cannot be null"));
+        }
         return ruleService.getByActionId(action.getId())
                 .collectList()
                 .map(action::setRules)
                 .onErrorResume(ex -> Mono.error(new RuntimeException("Failed to fetch rules", ex)));
+
+    }
+
+    public Flux<ActionEntity> getAll(Pageable pageable) {
+        return actionRepository.findAllBy(pageable)
+                .flatMap(this::attachRulesToAction)
+                .onErrorMap(e -> {
+                    // Log the error
+                    log.error("Error while fetching actions: {}", e.getMessage());
+
+                    // Return the original exception
+                    return e;
+                });
+    }
+
+
+    @Getter
+    public static class ActionResult {
+        private final boolean valid;
+        private final ValidationResult validationResult;
+        private final Map<String, Object> data;
+
+        private ActionResult(boolean valid, ValidationResult validationResult, Map<String, Object> data) {
+            this.valid = valid;
+            this.validationResult = validationResult;
+            this.data = data;
+        }
+
+        /**
+         * Create a successful action result
+         */
+        public static ActionResult success(Map<String, Object> data) {
+            return new ActionResult(true, ValidationResult.success(), data);
+        }
+
+        /**
+         * Create an invalid action result with validation errors
+         */
+        public static ActionResult invalid(ValidationResult validationResult) {
+            return new ActionResult(false, validationResult, null);
+        }
 
     }
 
