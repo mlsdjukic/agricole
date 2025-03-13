@@ -1,8 +1,8 @@
 package com.example.alarms.reactions;
 
 import com.example.alarms.components.ApplicationContextProvider;
-import com.example.alarms.dto.AlarmRequestDTO;
-import com.example.alarms.dto.NotificationDTO;
+import com.example.alarms.dto.AlarmRequest;
+import com.example.alarms.dto.Notification;
 import com.example.alarms.services.AlarmService;
 
 public class WriteAlarmToDBReaction implements Reaction{
@@ -22,8 +22,8 @@ public class WriteAlarmToDBReaction implements Reaction{
     }
 
     @Override
-    public void execute(NotificationDTO notification) {
-        alarmService.save(new AlarmRequestDTO(notification.getRuleId(), notification.getMessage()))
+    public void execute(Notification notification) {
+        alarmService.save(new AlarmRequest(notification.getRuleId(), notification.getMessage()))
                 .subscribe();
     }
 }

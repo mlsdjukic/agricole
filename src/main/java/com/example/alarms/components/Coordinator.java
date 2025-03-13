@@ -1,8 +1,8 @@
 package com.example.alarms.components;
 
 import com.example.alarms.actions.Action;
-import com.example.alarms.dto.ActionDTO;
-import com.example.alarms.dto.JobsDTO;
+import com.example.alarms.dto.ActionRequest;
+import com.example.alarms.dto.Jobs;
 import com.example.alarms.dto.RuleMapper;
 import com.example.alarms.entities.ActionEntity;
 import com.example.alarms.entities.ReservationEntity;
@@ -178,22 +178,21 @@ public class Coordinator {
                     }
 
                     return actionService.getActionById(actionId)
-                            .flatMap(action -> {
-                                // Start processing in a separate thread
-                                scheduleJob(action, job.getId()).subscribe();
-                                return Mono.just(job);
-                            })
-                            .switchIfEmpty(Mono.defer(() -> {
-
-                                // Return a Mono that completes only after releasing the job
-                                return reservationService.releaseJob(job.getId(), instanceId)
-                                        .then(Mono.empty());
-                            }));
+                            .flatMap(action ->
+                                    // Process the job reactively and then return the job
+                                    scheduleJob(action, job.getId())
+                                            .thenReturn(job)
+                            )
+                            .switchIfEmpty(Mono.defer(() ->
+                                    // Return a Mono that completes only after releasing the job
+                                    reservationService.releaseJob(job.getId(), instanceId)
+                                            .then(Mono.empty())
+                            ));
                 });
     }
 
     public Action createAction(ActionEntity actionEntity) throws Exception {
-        String actionClassName = "com.example.alarms.actions." + actionEntity.getType();
+        String actionClassName = "com.example.alarms.actions." + actionEntity.getType() + "." + actionEntity.getType();
         return (Action) createInstance(actionClassName, new Class<?>[]{String.class, Long.class}, actionEntity.getParams(), actionEntity.getId());
     }
 
@@ -209,7 +208,7 @@ public class Coordinator {
                 Stream.of(new WriteAlarmToDBReaction(ruleEntity.getId()) ) // adding write alarm to db as default reaction
         ).toList();
 
-        String ruleClassName = "com.example.alarms.rules." + ruleEntity.getName();
+        String ruleClassName = "com.example.alarms.rules." + ruleEntity.getName() + "." + ruleEntity.getName();
         try {
             return (Rule) createInstance(ruleClassName,
                     new Class<?>[]{String.class, Long.class, List.class},
@@ -220,7 +219,7 @@ public class Coordinator {
     }
 
     private Reaction createReaction(ReactionEntity reactionEntity) {
-        String reactionClassName = "com.example.alarms.reactions." + reactionEntity.getName();
+        String reactionClassName = "com.example.alarms.reactions." + reactionEntity.getName() + "." + reactionEntity.getName();
         try {
             return (Reaction) createInstance(reactionClassName,
                     new Class<?>[]{String.class, String.class, Long.class},
@@ -263,7 +262,7 @@ public class Coordinator {
                             .doOnSuccess(__ -> setupPeriodicExecution(action, rules, actionEntity, jobId));
                 })
                 .onErrorResume(e -> {
-                    log.error("Failed to schedule job {}: {}", jobId, e.getMessage(), e);
+                    log.error("Failed to schedule job {}: {}", jobId, e.getMessage());
                     return Mono.empty();
                 })
                 ;
@@ -338,14 +337,14 @@ public class Coordinator {
                 .subscribe();
 
         // Store subscription information
-        JobsDTO jobsDTO = new JobsDTO(
+        Jobs jobs = new Jobs(
                 actionEntity.getId(),
                 actionEntity.getType(),
                 action.getExposedParamsJson(),
                 actionEntity.getRules().stream().map(ruleMapper::toDTO).toList()
         );
 
-        subscriptions.put(actionEntity.getId(), new JobDescription(subscription, jobId, jobsDTO));
+        subscriptions.put(actionEntity.getId(), new JobDescription(subscription, jobId, jobs));
     }
 
     public Mono<Void> stopAction(Long actionId) {
@@ -359,7 +358,7 @@ public class Coordinator {
         // If no job found, return an appropriate error
         if (jobDescription == null) {
             log.warn("No active job found for action ID: {}", actionId);
-            return Mono.error(new EntityNotFoundException("No active job found for action ID: " + actionId));
+            return Mono.empty();
         }
 
         // Dispose the subscription if it exists
@@ -403,7 +402,7 @@ public class Coordinator {
         return subscriptions.containsKey(actionId);
     }
 
-    public Mono<ActionEntity> create(ActionDTO action, Object authentication) {
+    public Mono<ActionEntity> create(ActionRequest action, Object authentication) {
         // Extract user ID from authentication context
         Long userId = authentication instanceof SecurityAccount sc ? sc.getAccount().getId() : null;
 
@@ -440,7 +439,7 @@ public class Coordinator {
                 });
     }
 
-    public Mono<ActionEntity> update(ActionDTO action, Long id) {
+    public Mono<ActionEntity> update(ActionRequest action, Long id) {
             return this.stopAction(id)
                 .then(actionService.update(action, id))
                 .onErrorMap(ex -> {
@@ -499,6 +498,6 @@ public class Coordinator {
     public static class JobDescription {
         private Disposable disposable;
         private Long jobId;
-        private JobsDTO job;
+        private Jobs job;
     }
 }

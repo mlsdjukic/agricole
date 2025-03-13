@@ -5,17 +5,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.List;
-import java.util.Map;
-
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class JobsDTO {
-    private Long actionId;
-    private String type;
-    private Map<String,Object> params;
-    private List<RuleDTO> rules;
+public class Account {
 
+    private String username;
+    private String password;
 }

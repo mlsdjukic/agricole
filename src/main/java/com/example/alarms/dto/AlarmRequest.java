@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AlarmRequestDTO {
+public class AlarmRequest {
     private Long ruleId;
     private String message;
 

@@ -2,21 +2,20 @@ package com.example.alarms.dto;
 
 import com.example.alarms.actions.EwsAction.EwsActionParams;
 import com.example.alarms.actions.GmailAction.GmailActionParams;
-import com.example.alarms.entities.ActionEntity;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
-@NoArgsConstructor
-@Getter
-@Setter
-public class ActionResponse {
-    private Long id;
+/**
+ * Request model for creating an action
+ */
+@Data
+@Schema(description = "Request to create a new action")
+public class ActionRequest {
     @Schema(description = "The type of action to create",
             example = "EwsAction",
             allowableValues = {"EwsAction", "GmailAction"},
@@ -44,5 +43,4 @@ public class ActionResponse {
 
     @Schema(description = "Rules to apply for this action", required = true)
     private List<Rule> rules;
-
 }

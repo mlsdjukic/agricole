@@ -1,5 +1,6 @@
-package com.example.alarms.actions;
+package com.example.alarms.actions.GmailAction;
 
+import com.example.alarms.actions.Action;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -33,7 +34,7 @@ public class GmailAction implements Action {
     ArrayList<Message> receivedMessages;
 
     @Getter
-    private Params params;
+    private GmailActionParams params;
 
     @Getter
     private ExposedParams exposedParams;
@@ -41,7 +42,7 @@ public class GmailAction implements Action {
     public GmailAction(String paramsJson, Long actionId) {
         this.paramsJson = paramsJson;
         this.actionId = actionId;
-        mapParamsToFields();
+        this.params = mapParamsToFields();
 
         receivedMessages = new ArrayList<>();
 
@@ -108,14 +109,16 @@ public class GmailAction implements Action {
         }
     }
 
-    private void mapParamsToFields() {
+    private GmailActionParams mapParamsToFields() {
+        GmailActionParams params;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            this.params = objectMapper.readValue(this.paramsJson, Params.class);
+            params = objectMapper.readValue(this.paramsJson, GmailActionParams.class);
             this.exposedParams = objectMapper.readValue(this.paramsJson, ExposedParams.class);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse params: " + e.getMessage(), e);
         }
+        return params;
     }
 
     @Override

@@ -29,7 +29,7 @@ public class ActionMapper {
      * @return ActionEntity with data from DTO
      * @throws JsonProcessingException if params serialization fails
      */
-    public ActionEntity toEntity(ActionDTO dto) throws JsonProcessingException {
+    public ActionEntity toEntity(ActionRequest dto) throws JsonProcessingException {
         if (dto == null) {
             return null;
         }
@@ -55,14 +55,13 @@ public class ActionMapper {
      * @param entity The ActionEntity to convert
      * @return ActionDTO with data from entity
      */
-    public ActionDTO toDto(ActionEntity entity) {
+    public ActionRequest toDto(ActionEntity entity) {
         if (entity == null) {
             return null;
         }
 
-        ActionDTO dto = new ActionDTO();
+        ActionRequest dto = new ActionRequest();
         dto.setType(entity.getType());
-        dto.setId(entity.getId());
 
         // Convert JSON string to Map
         if (entity.getParams() != null && !entity.getParams().isEmpty()) {
@@ -90,12 +89,12 @@ public class ActionMapper {
      * @param entities List of ActionEntity objects
      * @return List of ActionDTO objects
      */
-    public List<ActionDTO> toDtoList(List<ActionEntity> entities) {
+    public List<ActionRequest> toDtoList(List<ActionEntity> entities) {
         if (entities == null) {
             return Collections.emptyList();
         }
 
-        List<ActionDTO> dtoList = new ArrayList<>(entities.size());
+        List<ActionRequest> dtoList = new ArrayList<>(entities.size());
         for (ActionEntity entity : entities) {
             dtoList.add(toDto(entity));
         }
@@ -108,13 +107,13 @@ public class ActionMapper {
      * @return List of ActionEntity objects
      * @throws JsonProcessingException if params serialization fails
      */
-    public List<ActionEntity> toEntityList(List<ActionDTO> dtos) throws JsonProcessingException {
+    public List<ActionEntity> toEntityList(List<ActionRequest> dtos) throws JsonProcessingException {
         if (dtos == null) {
             return Collections.emptyList();
         }
 
         List<ActionEntity> entityList = new ArrayList<>(dtos.size());
-        for (ActionDTO dto : dtos) {
+        for (ActionRequest dto : dtos) {
             entityList.add(toEntity(dto));
         }
         return entityList;
@@ -125,7 +124,7 @@ public class ActionMapper {
      * @param dto The ActionDTO to convert
      * @return Mono<ActionEntity> with converted entity or error
      */
-    public Mono<ActionEntity> toEntityReactive(ActionDTO dto) {
+    public Mono<ActionEntity> toEntityReactive(ActionRequest dto) {
         try {
             return Mono.just(toEntity(dto));
         } catch (JsonProcessingException e) {
@@ -140,7 +139,7 @@ public class ActionMapper {
      * @return Updated entity
      * @throws JsonProcessingException if params serialization fails
      */
-    public ActionEntity updateEntityFromDto(ActionEntity entity, ActionDTO dto) throws JsonProcessingException {
+    public ActionEntity updateEntityFromDto(ActionEntity entity, ActionRequest dto) throws JsonProcessingException {
         if (entity == null || dto == null) {
             return entity;
         }
@@ -154,5 +153,40 @@ public class ActionMapper {
         }
 
         return entity;
+    }
+
+    /**
+     * Converts ActionEntity to ActionResponse
+     * @param entity The ActionEntity to convert
+     * @return ActionDTO with data from entity
+     */
+    public ActionResponse toActionResponse(ActionEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        ActionResponse dto = new ActionResponse();
+        dto.setType(entity.getType());
+        dto.setId(entity.getId());
+
+        // Convert JSON string to Map
+        if (entity.getParams() != null && !entity.getParams().isEmpty()) {
+            try {
+
+                Map<String, Object> paramsMap = objectMapper.readValue(
+                        entity.getParams(), Map.class);
+                dto.setParams(paramsMap);
+            } catch (JsonProcessingException e) {
+                // Log error and set empty map
+                dto.setParams(Collections.emptyMap());
+            }
+        }
+
+        // Map rules if present
+        if (entity.getRules() != null && !entity.getRules().isEmpty()) {
+            dto.setRules(ruleMapper.toDtoList(entity.getRules()));
+        }
+
+        return dto;
     }
 }

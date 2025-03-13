@@ -7,11 +7,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@NoArgsConstructor
 @AllArgsConstructor
-public class AlarmResponseDTO {
-    private Long id;
+@NoArgsConstructor
+public class Notification {
+
     private Long ruleId;
     private String message;
 }
-

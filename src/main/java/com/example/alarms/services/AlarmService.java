@@ -1,7 +1,7 @@
 package com.example.alarms.services;
 
-import com.example.alarms.dto.AlarmRequestDTO;
-import com.example.alarms.dto.AlarmResponseDTO;
+import com.example.alarms.dto.AlarmRequest;
+import com.example.alarms.dto.AlarmResponse;
 import com.example.alarms.entities.AlarmEntity;
 import com.example.alarms.repositories.AlarmRepository;
 import org.springframework.stereotype.Service;
@@ -18,19 +18,19 @@ public class AlarmService {
     }
 
     // Save or update an alarm
-    public Mono<AlarmResponseDTO> save(AlarmRequestDTO AlarmRequestDTO) {
-        AlarmEntity alarmEntity = toEntity(AlarmRequestDTO);
+    public Mono<AlarmResponse> save(AlarmRequest AlarmRequest) {
+        AlarmEntity alarmEntity = toEntity(AlarmRequest);
         return alarmRepository.save(alarmEntity)
                 .map(this::toResponseDto);
     }
 
-    public Flux<AlarmResponseDTO> getAll() {
+    public Flux<AlarmResponse> getAll() {
         return alarmRepository.findAll()
                 .map(this::toResponseDto);
     }
 
     // Get alarm by ID
-    public Mono<AlarmResponseDTO> getById(Long id) {
+    public Mono<AlarmResponse> getById(Long id) {
         return alarmRepository.findById(id)
                 .map(this::toResponseDto);
     }
@@ -41,13 +41,13 @@ public class AlarmService {
     }
 
     // Get the last record by ruleId
-    public Mono<AlarmResponseDTO> getLastRecordByRuleId(Long ruleId) {
+    public Mono<AlarmResponse> getLastRecordByRuleId(Long ruleId) {
         return alarmRepository.findFirstByRuleIdOrderByIdDesc(ruleId)
                 .map(this::toResponseDto);
     }
 
     // Get all alarms with pagination
-    public Flux<AlarmResponseDTO> getAllWithPagination(int page, int size) {
+    public Flux<AlarmResponse> getAllWithPagination(int page, int size) {
         return alarmRepository.findAllBy()
                 .skip((long) page * size)
                 .take(size)
@@ -55,15 +55,15 @@ public class AlarmService {
     }
 
     // Mapping methods
-    private AlarmEntity toEntity(AlarmRequestDTO dto) {
+    private AlarmEntity toEntity(AlarmRequest dto) {
         AlarmEntity entity = new AlarmEntity();
         entity.setRuleId(dto.getRuleId());
         entity.setMessage(dto.getMessage());
         return entity;
     }
 
-    private AlarmResponseDTO toResponseDto(AlarmEntity entity) {
-        AlarmResponseDTO dto = new AlarmResponseDTO();
+    private AlarmResponse toResponseDto(AlarmEntity entity) {
+        AlarmResponse dto = new AlarmResponse();
         dto.setId(entity.getId());
         dto.setRuleId(entity.getRuleId());
         dto.setMessage(entity.getMessage());

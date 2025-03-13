@@ -1,7 +1,7 @@
 package com.example.alarms.services;
 
 import com.example.alarms.dto.JsonUtils;
-import com.example.alarms.dto.RuleDTO;
+import com.example.alarms.dto.Rule;
 import com.example.alarms.entities.ReactionEntity;
 import com.example.alarms.entities.RuleEntity;
 import com.example.alarms.repositories.RuleRepository;
@@ -54,28 +54,23 @@ public class RuleService {
     /**
      * Create a new rule.
      *
-     * @param ruleDTO RuleDTO to be created
+     * @param rule Rule to be created
      * @return Mono of RuleEntity
      */
-    public Mono<RuleEntity> create(RuleDTO ruleDTO, Long actionId) {
+    public Mono<RuleEntity> create(Rule rule, Long actionId) {
 
-        return Mono.fromCallable(() -> JsonUtils.toJson(ruleDTO.getDefinition()))
-                .flatMap(ruleJson -> ruleRepository.save(new RuleEntity(null, ruleDTO.getName(), ruleJson, actionId, null, null, null)))
-                .flatMap(savedRule -> saveReactions(savedRule, ruleDTO)
-                    .thenReturn(savedRule)
-                    .onErrorResume(ex -> reactionService.deleteByRuleId(savedRule.getId())
-                            .then(Mono.error(new RuntimeException("Failed to save reactions", ex)))
-
-                ));
+        return Mono.fromCallable(() -> JsonUtils.toJson(rule.getDefinition()))
+                .flatMap(ruleJson -> ruleRepository.save(new RuleEntity(null, rule.getName(), ruleJson, actionId, null, null, null)))
+                .flatMap(savedRule -> saveReactions(savedRule, rule));
     }
 
-    private Mono<Void> saveReactions(RuleEntity savedRule, RuleDTO ruleDTO) {
-        if (ruleDTO.getReactions().isEmpty()) {
+    private Mono<RuleEntity> saveReactions(RuleEntity savedRule, Rule rule) {
+        if (rule.getReactions().isEmpty()) {
             return Mono.empty();
         }
-        return Flux.fromIterable(ruleDTO.getReactions())
-                .flatMap(reactionDTO -> Mono.fromCallable(() -> JsonUtils.toJson(reactionDTO.getParams()))
-                        .map(reactionJson -> new ReactionEntity(null, reactionDTO.getName(), reactionJson, savedRule.getId(), null, null))
+        return Flux.fromIterable(rule.getReactions())
+                .flatMap(reaction -> Mono.fromCallable(() -> JsonUtils.toJson(reaction.getParams()))
+                        .map(reactionJson -> new ReactionEntity(null, reaction.getName(), reactionJson, savedRule.getId(), null, null))
                 )
                 .collectList()
                 .flatMap(reactionEntities -> reactionService.saveAll(reactionEntities).collectList())
@@ -83,7 +78,6 @@ public class RuleService {
                     savedRule.setReactions(savedReactions);
                     return savedRule;
                 })
-                .then()
                 .onErrorResume(ex -> Mono.error(new RuntimeException(ex)));
     }
 

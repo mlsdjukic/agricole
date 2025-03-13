@@ -1,8 +1,6 @@
 package com.example.alarms.services;
 
 
-import com.example.alarms.dto.JsonUtils;
-import com.example.alarms.dto.ReactionDTO;
 import com.example.alarms.entities.ReactionEntity;
 import com.example.alarms.repositories.ReactionRepository;
 import org.modelmapper.ModelMapper;
@@ -42,17 +40,5 @@ public class ReactionService {
         return reactionRepository.deleteByRuleId(ruleId)
                 .onErrorResume(ex -> Mono.error(new IllegalArgumentException("No rule with this id", ex)));
 
-    }
-
-    private ReactionDTO convertToDTO(ReactionEntity entity) {
-        ReactionDTO dto = modelMapper.map(entity, ReactionDTO.class);
-        dto.setParams(JsonUtils.fromJson(entity.getParams())); // Convert JSON to Map
-        return dto;
-    }
-
-    private ReactionEntity convertToEntity(ReactionDTO dto) {
-        ReactionEntity entity = modelMapper.map(dto, ReactionEntity.class);
-        entity.setParams(JsonUtils.toJson(dto.getParams())); // Convert Map to JSON
-        return entity;
     }
 }

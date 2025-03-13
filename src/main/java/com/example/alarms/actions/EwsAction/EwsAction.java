@@ -1,5 +1,6 @@
-package com.example.alarms.actions;
+package com.example.alarms.actions.EwsAction;
 
+import com.example.alarms.actions.Action;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -33,7 +34,7 @@ public class EwsAction implements Action {
     private Date lastChecked = null;
 
     @Getter
-    private Params params;
+    private EwsActionParams params;
 
     @Getter
     private ExposedParams exposedParams;
@@ -65,11 +66,11 @@ public class EwsAction implements Action {
         log.info("Pull subscription created successfully!");
     }
 
-    private Params mapParamsToFields() {
-        Params params;
+    private EwsActionParams mapParamsToFields() {
+        EwsActionParams params;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            params = objectMapper.readValue(this.paramsJson, Params.class);
+            params = objectMapper.readValue(this.paramsJson, EwsActionParams.class);
             this.exposedParams = objectMapper.readValue(this.paramsJson, ExposedParams.class);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse params: " + e.getMessage(), e);
@@ -115,25 +116,6 @@ public class EwsAction implements Action {
         ObjectMapper objectMapper = new ObjectMapper();
 
         return objectMapper.convertValue(exposedParams, new TypeReference<>() {});
-    }
-
-
-    @Setter
-    @Getter
-    private static class Params {
-
-        @JsonProperty("interval")
-        private Long interval;
-
-        @JsonProperty("ews_url")
-        private String ews_url;
-
-        @JsonProperty("username")
-        private String username;
-
-        @JsonProperty("password")
-        private String password;
-
     }
 
     @Setter

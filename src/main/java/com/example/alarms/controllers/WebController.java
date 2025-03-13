@@ -1,13 +1,11 @@
 package com.example.alarms.controllers;
 
-import com.example.alarms.dto.AlarmResponseDTO;
 import com.example.alarms.services.AlarmService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.reactive.result.view.Rendering;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Controller

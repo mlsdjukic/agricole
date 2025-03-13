@@ -1,7 +1,8 @@
-package com.example.alarms.rules;
+package com.example.alarms.rules.FindPatternInGmail;
 
-import com.example.alarms.dto.NotificationDTO;
+import com.example.alarms.dto.Notification;
 import com.example.alarms.reactions.Reaction;
+import com.example.alarms.rules.Rule;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
@@ -21,12 +22,12 @@ import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
-public class FindPatternInGmail implements  Rule{
+public class FindPatternInGmail implements Rule {
 
     private final Long ruleId;
     private final List<Long> patternTimestamps;
     private final List<Reaction> reactions;
-    private Params params;
+    private FindPatternInGmailDefinition params;
 
     public FindPatternInGmail(String rulesJson, Long ruleId, List<Reaction> reactions) {
         this.ruleId = ruleId;
@@ -38,7 +39,7 @@ public class FindPatternInGmail implements  Rule{
     private void mapParamsToFields(String rulesJson) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            this.params = objectMapper.readValue(rulesJson, Params.class);
+            this.params = objectMapper.readValue(rulesJson, FindPatternInGmailDefinition.class);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse params: " + e.getMessage(), e);
         }
@@ -101,27 +102,6 @@ public class FindPatternInGmail implements  Rule{
     }
 
     private void react() {
-        reactions.forEach(reaction -> reaction.execute(new NotificationDTO(this.ruleId, params.alarmMessage)));
-    }
-
-    @Setter
-    @Getter
-    private static class Params {
-
-        @JsonProperty("alarm_message")
-        private String alarmMessage;
-
-        @JsonProperty("location")
-        private String location;
-
-        @JsonProperty("repetition")
-        private int repetition;
-
-        @JsonProperty("pattern")
-        private String pattern;
-
-        @JsonProperty("interval")
-        private int interval;
-
+        reactions.forEach(reaction -> reaction.execute(new Notification(this.ruleId, params.getAlarmMessage())));
     }
 }

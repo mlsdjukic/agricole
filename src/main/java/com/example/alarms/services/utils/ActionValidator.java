@@ -1,8 +1,8 @@
 package com.example.alarms.services.utils;
 
-import com.example.alarms.dto.ActionDTO;
-import com.example.alarms.dto.ReactionDTO;
-import com.example.alarms.dto.RuleDTO;
+import com.example.alarms.dto.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,7 +21,7 @@ public class ActionValidator {
      * @param request The request to validate
      * @return List of validation errors, empty if valid
      */
-    public static List<String> validateCreateUpdateRequest(ActionDTO request) {
+    public static List<String> validateCreateUpdateRequest(ActionRequest request) {
         List<String> errors = new ArrayList<>();
 
         // Validate main request structure
@@ -43,11 +43,15 @@ public class ActionValidator {
             }
         }
 
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> paramsMap = mapper.convertValue(request.getParams(),
+                new TypeReference<Map<String, Object>>() {});
+
         // Validate params based on type
         if (request.getParams() == null) {
             errors.add("Params are required");
         } else {
-            errors.addAll(validateParams(request.getType(), request.getParams()));
+            errors.addAll(validateParams(request.getType(), paramsMap));
         }
 
         // Validate rules
@@ -57,7 +61,7 @@ public class ActionValidator {
             errors.add("Rules array cannot be empty");
         } else {
             for (int i = 0; i < request.getRules().size(); i++) {
-                RuleDTO rule = request.getRules().get(i);
+                Rule rule = request.getRules().get(i);
                 errors.addAll(validateRule(rule, i));
             }
         }
@@ -139,7 +143,7 @@ public class ActionValidator {
     /**
      * Validates a rule
      */
-    private static List<String> validateRule(RuleDTO rule, int index) {
+    private static List<String> validateRule(Rule rule, int index) {
         List<String> errors = new ArrayList<>();
         String prefix = "Rule at index " + index + ": ";
 
@@ -161,11 +165,15 @@ public class ActionValidator {
             }
         }
 
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> definitionMap = mapper.convertValue(rule.getDefinition(),
+                new TypeReference<Map<String, Object>>() {});
+
         // Validate definition based on rule name
         if (rule.getDefinition() == null) {
             errors.add(prefix + "definition is required");
         } else if ("FindPatternInEws".equals(rule.getName())) {
-            Map<String, Object> def = rule.getDefinition();
+            Map<String, Object> def = definitionMap;
 
             // Required fields for FindPatternInEws
             if (!def.containsKey("pattern") || def.get("pattern") == null ||
@@ -226,7 +234,7 @@ public class ActionValidator {
             errors.add(prefix + "reactions array is required (can be empty)");
         } else {
             for (int i = 0; i < rule.getReactions().size(); i++) {
-                ReactionDTO reaction = rule.getReactions().get(i);
+                Reaction reaction = rule.getReactions().get(i);
                 errors.addAll(validateReaction(reaction, index, i));
             }
         }
@@ -237,7 +245,7 @@ public class ActionValidator {
     /**
      * Validates a reaction
      */
-    private static List<String> validateReaction(ReactionDTO reaction, int ruleIndex, int reactionIndex) {
+    private static List<String> validateReaction(Reaction reaction, int ruleIndex, int reactionIndex) {
         List<String> errors = new ArrayList<>();
         String prefix = "Rule at index " + ruleIndex + ", reaction at index " + reactionIndex + ": ";
 
@@ -259,16 +267,19 @@ public class ActionValidator {
             }
         }
 
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> paramsMap = mapper.convertValue(reaction.getParams(),
+                new TypeReference<Map<String, Object>>() {});
+
         // Validate params based on reaction name
         if (reaction.getParams() == null) {
             errors.add(prefix + "params are required");
         } else if ("SendEmailReaction".equals(reaction.getName())) {
-            Map<String, Object> params = reaction.getParams();
 
-            if (!params.containsKey("email_address") || params.get("email_address") == null ||
-                    params.get("email_address").toString().isEmpty()) {
+            if (!paramsMap.containsKey("email_address") || paramsMap.get("email_address") == null ||
+                    paramsMap.get("email_address").toString().isEmpty()) {
                 errors.add(prefix + "params requires email_address field");
-            } else if (!isValidEmail(params.get("email_address").toString())) {
+            } else if (!isValidEmail(paramsMap.get("email_address").toString())) {
                 errors.add(prefix + "email_address must be a valid email");
             }
         }

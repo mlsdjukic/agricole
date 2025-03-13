@@ -3,6 +3,12 @@ package com.example.alarms.controllers;
 import com.example.alarms.components.Coordinator;
 import com.example.alarms.dto.*;
 import com.example.alarms.exceptions.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -12,7 +18,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
@@ -20,8 +25,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import javax.naming.ServiceUnavailableException;
 
 @Slf4j
 @RequestMapping("/jobs")
@@ -37,14 +40,53 @@ public class JobController {
         this.actionMapper = actionMapper;
     }
 
+
+    @Operation(
+            summary = "Create a new action",
+            description = "Creates a new action with specific parameters and rules",
+            operationId = "createAction",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ActionRequest.class)
+                    )
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "201",
+                            description = "Action created successfully",
+                            content = @Content(
+                                    mediaType = "text/event-stream",
+                                    schema = @Schema(implementation = ActionResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid request body",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized"
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Internal server error"
+                    )
+            }
+    )
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @ResponseStatus(HttpStatus.CREATED) // This sets the default success status
-    public Mono<ActionResponse> create(@RequestBody ActionDTO action) {
+    public Mono<ActionResponse> create(@RequestBody ActionRequest action) {
         return ReactiveSecurityContextHolder.getContext()
                 .map(SecurityContext::getAuthentication)
                 .map(Authentication::getPrincipal)
                 .flatMap(authentication -> coordinator.create(action, authentication))
-                .map(actionEntity -> new ActionResponse(actionMapper.toDto(actionEntity)))
+                .map(actionMapper::toActionResponse)
                 .onErrorMap(e -> {
                     if (e instanceof UserNotFoundException) {
                         return new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
@@ -64,14 +106,61 @@ public class JobController {
                 });
     }
 
+    @Operation(
+            summary = "Create a new action",
+            description = "Creates a new action with specific parameters and rules",
+            operationId = "createAction",
+            parameters = {
+                    @Parameter(
+                            name = "id",
+                            description = "Unique identifier for the action",
+                            in = ParameterIn.PATH,
+                            required = true,
+                            schema = @Schema(type = "string")
+                    )
+            },
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ActionRequest.class)
+                    )
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "201",
+                            description = "Action created successfully",
+                            content = @Content(
+                                    mediaType = "text/event-stream",
+                                    schema = @Schema(implementation = ActionResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid request body",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized"
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Internal server error"
+                    )
+            }
+    )
     @PutMapping(value = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<ActionResponse> update(@PathVariable Long id, @RequestBody ActionDTO action) {
+    public Mono<ActionResponse> update(@PathVariable Long id, @RequestBody ActionRequest action) {
         if (id == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID cannot be null");
         }
 
         return coordinator.update(action, id)
-                .map(actionEntity -> new ActionResponse(actionMapper.toDto(actionEntity)))
+                .map(actionMapper::toActionResponse)
                 .onErrorMap(e -> {
                     if (e instanceof UserNotFoundException) {
                         return new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
@@ -115,7 +204,7 @@ public class JobController {
 
 
     @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ActionDTO> getAll(
+    public Flux<ActionResponse> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String sortBy,
@@ -138,7 +227,7 @@ public class JobController {
         );
 
         return coordinator.get(pageable)
-                .map(actionMapper::toDto)
+                .map(actionMapper::toActionResponse)
                 .onErrorMap(e -> {
                     log.error("Error retrieving actions: {}", e.getMessage(), e);
 
@@ -157,7 +246,7 @@ public class JobController {
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<ActionDTO> get(@PathVariable Long id) {
+    public Mono<ActionResponse> get(@PathVariable Long id) {
         if (id == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page index must be greater than or equal to 0");
         }
@@ -165,12 +254,12 @@ public class JobController {
         return coordinator.get(id)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Action not found with ID: " + id)))
-                .map(actionMapper::toDto)
+                .map(actionMapper::toActionResponse)
                 .onErrorMap(e -> {
                     log.error("Error retrieving actions: {}", e.getMessage(), e);
 
                     if (e instanceof ResponseStatusException) {
-                        return e;
+                        return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
                     }
                     // Map different exceptions to appropriate HTTP status exceptions
                     if (e instanceof IllegalArgumentException) {

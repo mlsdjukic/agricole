@@ -1,12 +1,10 @@
-package com.example.alarms.rules;
+package com.example.alarms.rules.FindPatternInEws;
 
 
-import com.example.alarms.dto.NotificationDTO;
+import com.example.alarms.dto.Notification;
 import com.example.alarms.reactions.Reaction;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.example.alarms.rules.Rule;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import microsoft.exchange.webservices.data.core.exception.service.local.ServiceLocalException;
 import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
@@ -17,14 +15,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-public class FindPatternInEws implements  Rule{
+public class FindPatternInEws implements Rule {
 
     private static final String defaultLocation = "body";
     private static final String defaultAlarmMessage = "Pattern found";
 
     private final Long ruleId;
     private final List<Long> patternTimestamps;
-    private Params params;
+    private FindPatternInEwsDefinition params;
 
     private final List<Reaction> reactions;
 
@@ -39,7 +37,7 @@ public class FindPatternInEws implements  Rule{
     private void mapParamsToFields(String rulesJson) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            this.params = objectMapper.readValue(rulesJson, Params.class);
+            this.params = objectMapper.readValue(rulesJson, FindPatternInEwsDefinition.class);
             validateParams();
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse params: " + e.getMessage(), e);
@@ -47,12 +45,12 @@ public class FindPatternInEws implements  Rule{
     }
 
     private void validateParams() {
-        if (this.params.alarmMessage == null) {
-            this.params.alarmMessage = defaultAlarmMessage;
+        if (this.params.getAlarmMessage() == null) {
+            this.params.setAlarmMessage(defaultAlarmMessage);
         }
 
-        if(this.params.location == null) {
-            this.params.location = defaultLocation;
+        if(this.params.getLocation() == null) {
+            this.params.setLocation(defaultLocation);
         }
     }
 
@@ -109,27 +107,7 @@ public class FindPatternInEws implements  Rule{
     }
 
     private void react() {
-        reactions.forEach(reaction -> reaction.execute(new NotificationDTO(this.ruleId, params.alarmMessage)));
+        reactions.forEach(reaction -> reaction.execute(new Notification(this.ruleId, params.getAlarmMessage())));
     }
 
-    @Setter
-    @Getter
-    private static class Params {
-
-        @JsonProperty("alarm_message")
-        private String alarmMessage;
-
-        @JsonProperty("location")
-        private String location;
-
-        @JsonProperty("repetition")
-        private int repetition;
-
-        @JsonProperty("pattern")
-        private String pattern;
-
-        @JsonProperty("interval")
-        private int interval;
-
-    }
 }

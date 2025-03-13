@@ -1,6 +1,6 @@
 package com.example.alarms.services;
 
-import com.example.alarms.dto.AccountDTO;
+import com.example.alarms.dto.Account;
 import com.example.alarms.dto.AccountMapper;
 import com.example.alarms.entities.AccountEntity;
 import com.example.alarms.repositories.AccountRepository;
@@ -18,25 +18,25 @@ public class AccountService {
     private  final AccountMapper accountMapper;
     private final PasswordEncoder passwordEncoder;
 
-    public Mono<AccountDTO> createAccount(AccountDTO accountDTO) {
-        AccountEntity accountEntity = accountMapper.toEntity(accountDTO);
-        accountEntity.setPassword("{bcrypt}" + passwordEncoder.encode(accountDTO.getPassword()));
+    public Mono<Account> createAccount(Account account) {
+        AccountEntity accountEntity = accountMapper.toEntity(account);
+        accountEntity.setPassword("{bcrypt}" + passwordEncoder.encode(account.getPassword()));
         return accountRepository.save(accountEntity)
                 .map(accountMapper::toDTO);
     }
 
-    public Flux<AccountDTO> getAllAccounts() {
+    public Flux<Account> getAllAccounts() {
         return accountRepository.findAll()
                 .map(accountMapper::toDTO);
     }
 
-    public Mono<AccountDTO> getAccountById(String id) {
+    public Mono<Account> getAccountById(String id) {
         return accountRepository.findById(id)
                 .map(accountMapper::toDTO);
 
     }
 
-    public Mono<AccountDTO> updateAccount(String id, AccountDTO updatedDTO) {
+    public Mono<Account> updateAccount(String id, Account updatedDTO) {
         return accountRepository.findById(id)
                 .flatMap(existingAccount -> {
                     existingAccount.setUsername(updatedDTO.getUsername());

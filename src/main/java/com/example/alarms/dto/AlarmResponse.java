@@ -7,10 +7,11 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
-public class AccountDTO {
-
-    private String username;
-    private String password;
+@AllArgsConstructor
+public class AlarmResponse {
+    private Long id;
+    private Long ruleId;
+    private String message;
 }
+

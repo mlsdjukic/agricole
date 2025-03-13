@@ -6,15 +6,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class AccountMapper {
 
-    public AccountEntity toEntity(AccountDTO dto) {
+    public AccountEntity toEntity(Account dto) {
         AccountEntity entity = new AccountEntity();
         entity.setUsername(dto.getUsername());
         entity.setPassword(dto.getPassword());
         return entity;
     }
 
-    public AccountDTO toDTO(AccountEntity entity) {
-        AccountDTO dto = new AccountDTO();
+    public Account toDTO(AccountEntity entity) {
+        Account dto = new Account();
         dto.setUsername(entity.getUsername());
         dto.setPassword(entity.getPassword());
         return dto;
