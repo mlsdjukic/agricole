@@ -173,18 +173,17 @@ public class ActionValidator {
         if (rule.getDefinition() == null) {
             errors.add(prefix + "definition is required");
         } else if ("FindPatternInEws".equals(rule.getName())) {
-            Map<String, Object> def = definitionMap;
 
             // Required fields for FindPatternInEws
-            if (!def.containsKey("pattern") || def.get("pattern") == null ||
-                    def.get("pattern").toString().isEmpty()) {
+            if (!definitionMap.containsKey("pattern") || definitionMap.get("pattern") == null ||
+                    definitionMap.get("pattern").toString().isEmpty()) {
                 errors.add(prefix + "definition requires pattern field");
             }
 
-            if (!def.containsKey("interval")) {
+            if (!definitionMap.containsKey("interval")) {
                 errors.add(prefix + "definition requires interval field");
             } else {
-                Object intervalObj = def.get("interval");
+                Object intervalObj = definitionMap.get("interval");
                 if (intervalObj instanceof Number) {
                     int interval = ((Number) intervalObj).intValue();
                     if (interval < 1) {
@@ -195,10 +194,10 @@ public class ActionValidator {
                 }
             }
 
-            if (!def.containsKey("repetition")) {
+            if (!definitionMap.containsKey("repetition")) {
                 errors.add(prefix + "definition requires repetition field");
             } else {
-                Object repObj = def.get("repetition");
+                Object repObj = definitionMap.get("repetition");
                 if (repObj instanceof Number) {
                     int repetition = ((Number) repObj).intValue();
                     if (repetition < 1) {
@@ -209,13 +208,13 @@ public class ActionValidator {
                 }
             }
 
-            if (!def.containsKey("alarm_message") || def.get("alarm_message") == null ||
-                    def.get("alarm_message").toString().isEmpty()) {
+            if (!definitionMap.containsKey("alarm_message") || definitionMap.get("alarm_message") == null ||
+                    definitionMap.get("alarm_message").toString().isEmpty()) {
                 errors.add(prefix + "definition requires alarm_message field");
             }
 
-            if (!def.containsKey("location") || def.get("location") == null ||
-                    def.get("location").toString().isEmpty()) {
+            if (!definitionMap.containsKey("location") || definitionMap.get("location") == null ||
+                    definitionMap.get("location").toString().isEmpty()) {
                 errors.add(prefix + "definition requires location field");
             } else {
                 Set<String> validLocations = new HashSet<>();
@@ -223,7 +222,7 @@ public class ActionValidator {
                 validLocations.add("subject");
                 validLocations.add("sender");
 
-                if (!validLocations.contains(def.get("location").toString())) {
+                if (!validLocations.contains(definitionMap.get("location").toString())) {
                     errors.add(prefix + "location must be one of: " + String.join(", ", validLocations));
                 }
             }

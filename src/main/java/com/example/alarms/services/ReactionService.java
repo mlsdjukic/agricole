@@ -3,7 +3,6 @@ package com.example.alarms.services;
 
 import com.example.alarms.entities.ReactionEntity;
 import com.example.alarms.repositories.ReactionRepository;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,12 +16,10 @@ import java.util.List;
 public class ReactionService {
 
     private final ReactionRepository reactionRepository;
-    private final ModelMapper modelMapper;
 
     @Autowired
-    public ReactionService(ReactionRepository reactionRepository, ModelMapper modelMapper) {
+    public ReactionService(ReactionRepository reactionRepository) {
         this.reactionRepository = reactionRepository;
-        this.modelMapper = modelMapper;
     }
 
     public Flux<ReactionEntity> saveAll(List<ReactionEntity> reactionEntities) {

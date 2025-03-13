@@ -306,9 +306,6 @@ public class Coordinator {
                                         ActionEntity actionEntity, Long jobId) {
 
         AtomicInteger counter = new AtomicInteger(0);
-        int maxRetries = 5;
-        Duration retryBackoff = Duration.ofSeconds(2);
-        Duration heartbeatTimeout = Duration.ofSeconds(5);
 
         Disposable subscription = Flux.interval(Duration.ofSeconds(action.getInterval()))
                 .publishOn(Schedulers.boundedElastic())
@@ -468,11 +465,6 @@ public class Coordinator {
                     return Mono.error(new RuntimeException("Failed to delete action", ex));
                 });
     }
-
-//    public Flux<JobsDTO> getJobs() {
-//        return Flux.fromIterable(subscriptions.values())
-//                .map(JobDescription::getJob);
-//    }
 
     public Flux<ActionEntity> get(Pageable pageable) {
         return actionService.getAll(pageable)
