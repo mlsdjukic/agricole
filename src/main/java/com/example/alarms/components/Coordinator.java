@@ -310,8 +310,11 @@ public class Coordinator {
         Disposable subscription = Flux.interval(Duration.ofSeconds(action.getInterval()))
                 .publishOn(Schedulers.boundedElastic())
                 .concatMap(tick -> {
-                    Flux<Void> actionFlux = executeActionAndRules(action, rules);
-
+                    Flux<Void> actionFlux = executeActionAndRules(action, rules)
+                        .onErrorResume(err -> {
+                            log.error("Error executing action: {}", err.getMessage());
+                            return Flux.empty(); // Continue on error
+                        });
                     // Update heartbeat only every 6 ticks (60 seconds if interval is 10 seconds)
                     if (counter.incrementAndGet() % 6 == 0) {
                         return actionFlux.thenMany(
@@ -354,6 +357,7 @@ public class Coordinator {
 
         // If no job found, return an appropriate error
         if (jobDescription == null) {
+
             log.warn("No active job found for action ID: {}", actionId);
             return Mono.empty();
         }
