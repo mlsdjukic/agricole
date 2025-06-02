@@ -36,14 +36,14 @@ public class AccountController {
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
-    @PutMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<ResponseEntity<Account>> updateAccount(
-            @PathVariable String id,
-            @RequestBody Account account) {
-        return accountService.updateAccount(id, account)
-                .map(ResponseEntity::ok)
-                .defaultIfEmpty(ResponseEntity.notFound().build());
-    }
+//    @PutMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+//    public Mono<ResponseEntity<Account>> updateAccount(
+//            @PathVariable String id,
+//            @RequestBody Account account) {
+//        return accountService.updateAccount(id, account)
+//                .map(ResponseEntity::ok)
+//                .defaultIfEmpty(ResponseEntity.notFound().build());
+//    }
 
     @DeleteMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Mono<ResponseEntity<Void>> deleteAccount(@PathVariable String id) {

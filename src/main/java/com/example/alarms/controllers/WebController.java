@@ -1,12 +1,15 @@
 package com.example.alarms.controllers;
 
+import com.example.alarms.dto.AlarmResponse;
 import com.example.alarms.services.AlarmService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.reactive.result.view.Rendering;
-import reactor.core.publisher.Mono;
+
+import java.util.ArrayList;
+import java.util.List;
+import com.example.alarms.services.AlarmService;
 
 @Controller
 @RequestMapping("/")
@@ -18,13 +21,18 @@ public class WebController {
         this.alarmService = alarmService;
     }
 
-    @GetMapping
-    public Mono<Rendering> index(final Model model) {
-        return alarmService.getAll()
-                .collectList() // Convert the Flux<AlarmResponseDTO> to Mono<List<AlarmResponseDTO>>
-                .map(alarms -> Rendering.view("ui/index")
-                        .modelAttribute("alarms", alarms)
-                        .build());
+    @GetMapping("/")
+    public String index(Model model) {
+        List<AlarmResponse> alarms = new ArrayList<>();
+        alarmService.getAll().collectList()
+                .map(list -> {
+                    // use list here
+                    alarms.addAll(list);
+                    return list;
+                }).subscribe(); // or cache / blocking call
+
+        model.addAttribute("alarms", alarms);
+        return "ui/index";  // thymeleaf template ui/index.html
     }
 
 }

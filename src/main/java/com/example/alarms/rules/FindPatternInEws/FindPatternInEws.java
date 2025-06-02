@@ -11,6 +11,7 @@ import microsoft.exchange.webservices.data.core.service.item.EmailMessage;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,10 +49,29 @@ public class FindPatternInEws implements Rule {
         if (this.params.getAlarmMessage() == null) {
             this.params.setAlarmMessage(defaultAlarmMessage);
         }
+    }
 
-        if(this.params.getLocation() == null) {
-            this.params.setLocation(defaultLocation);
+    private boolean isNowWithinInterval(String startTimeStr, String endTimeStr) {
+        // If both are null or blank, no time restriction applies
+        if (isBlank(startTimeStr) && isBlank(endTimeStr)) {
+            return true;
         }
+
+        // Use "00:00" as the default time where appropriate
+        LocalTime start = isBlank(startTimeStr) ? LocalTime.MIDNIGHT : LocalTime.parse(startTimeStr);
+        LocalTime end = isBlank(endTimeStr) ? LocalTime.MIDNIGHT : LocalTime.parse(endTimeStr);
+        LocalTime now = LocalTime.now();
+
+        if (end.isBefore(start)) {
+            // Interval wraps around midnight
+            return !now.isBefore(start) || !now.isAfter(end);
+        } else {
+            return !now.isBefore(start) && !now.isAfter(end);
+        }
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
     }
 
     @Override
@@ -62,13 +82,25 @@ public class FindPatternInEws implements Rule {
             return;
         }
 
+        if (!isNowWithinInterval(this.params.getStartTime(), this.params.getEndTime())) {
+            // Current time is outside the allowed interval, exit early
+            return;
+        }
+
         try {
-            String container = extractContainer(email, this.params.getLocation());
-            if (container == null) {
-                return;
+            for (com.example.alarms.rules.FindPatternInEws.FindPatternInEwsDefinition.PatternDefinition pattern : this.params.getPatterns()){
+                String container = extractContainer(email, pattern.getLocation());
+                if (container == null) {
+                    return;
+                }
+
+                if (!container.toLowerCase().contains(pattern.getPattern().toLowerCase())) {
+                    return;
+                }
             }
 
-            processPatternMatching(container);
+            shouldIReact();
+
 
         } catch (ServiceLocalException e) {
             log.error("Error executing rule: {}", e.getMessage() );
@@ -87,12 +119,8 @@ public class FindPatternInEws implements Rule {
         };
     }
 
-    private void processPatternMatching(String container) {
+    private void shouldIReact() {
         long currentTime = System.currentTimeMillis();
-
-        if (!container.toLowerCase().contains(params.getPattern().toLowerCase())) {
-            return;
-        }
 
         patternTimestamps.add(currentTime);
 

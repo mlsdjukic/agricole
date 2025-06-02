@@ -175,8 +175,7 @@ public class ActionValidator {
         } else if ("FindPatternInEws".equals(rule.getName())) {
 
             // Required fields for FindPatternInEws
-            if (!definitionMap.containsKey("pattern") || definitionMap.get("pattern") == null ||
-                    definitionMap.get("pattern").toString().isEmpty()) {
+            if (!definitionMap.containsKey("pattern") || definitionMap.get("pattern") == null) {
                 errors.add(prefix + "definition requires pattern field");
             }
 
@@ -212,20 +211,20 @@ public class ActionValidator {
                     definitionMap.get("alarm_message").toString().isEmpty()) {
                 errors.add(prefix + "definition requires alarm_message field");
             }
-
-            if (!definitionMap.containsKey("location") || definitionMap.get("location") == null ||
-                    definitionMap.get("location").toString().isEmpty()) {
-                errors.add(prefix + "definition requires location field");
-            } else {
-                Set<String> validLocations = new HashSet<>();
-                validLocations.add("body");
-                validLocations.add("subject");
-                validLocations.add("sender");
-
-                if (!validLocations.contains(definitionMap.get("location").toString())) {
-                    errors.add(prefix + "location must be one of: " + String.join(", ", validLocations));
-                }
-            }
+//
+//            if (!definitionMap.containsKey("location") || definitionMap.get("location") == null ||
+//                    definitionMap.get("location").toString().isEmpty()) {
+//                errors.add(prefix + "definition requires location field");
+//            } else {
+//                Set<String> validLocations = new HashSet<>();
+//                validLocations.add("body");
+//                validLocations.add("subject");
+//                validLocations.add("sender");
+//
+//                if (!validLocations.contains(definitionMap.get("location").toString())) {
+//                    errors.add(prefix + "location must be one of: " + String.join(", ", validLocations));
+//                }
+//            }
         }
 
         // Validate reactions array (must be present, can be empty)
