@@ -175,8 +175,8 @@ public class ActionValidator {
         } else if ("FindPatternInEws".equals(rule.getName())) {
 
             // Required fields for FindPatternInEws
-            if (!definitionMap.containsKey("pattern") || definitionMap.get("pattern") == null) {
-                errors.add(prefix + "definition requires pattern field");
+            if (!definitionMap.containsKey("patterns") || definitionMap.get("patterns") == null) {
+                errors.add(prefix + "definition requires patterns field");
             }
 
             if (!definitionMap.containsKey("interval")) {

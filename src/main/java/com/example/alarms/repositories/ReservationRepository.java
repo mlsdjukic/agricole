@@ -20,9 +20,10 @@ public interface ReservationRepository extends ReactiveCrudRepository<Reservatio
 
 
     @Query("""
-        SELECT TOP(:batchSize) * FROM reservations 
-        WHERE status = 'pending' 
-        OR (status = 'processing' AND locked_at < :timeoutThreshold)
+                SELECT * FROM reservations
+                WHERE status = 'pending'
+                OR (status = 'processing' AND locked_at < :timeoutThreshold)
+                LIMIT :batchSize
     """)
     Flux<ReservationEntity> findAvailableJobs(LocalDateTime timeoutThreshold, int batchSize);
 
