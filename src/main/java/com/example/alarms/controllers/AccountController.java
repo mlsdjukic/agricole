@@ -2,11 +2,10 @@ package com.example.alarms.controllers;
 
 import com.example.alarms.dto.Account;
 import com.example.alarms.services.AccountService;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/accounts")
@@ -18,36 +17,41 @@ public class AccountController {
         this.accountService = accountService;
     }
 
-    @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<ResponseEntity<Account>> createAccount(@RequestBody Account account) {
-        return accountService.createAccount(account)
-                .map(ResponseEntity::ok);
+    @PostMapping
+    public ResponseEntity<Account> createAccount(@RequestBody Account account) {
+        Account created = accountService.createAccount(account);
+        return ResponseEntity.ok(created);
     }
 
-    @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<Account> getAllAccounts() {
-        return accountService.getAllAccounts();
+    @GetMapping
+    public ResponseEntity<List<Account>> getAllAccounts() {
+        List<Account> accounts = accountService.getAllAccounts();
+        return ResponseEntity.ok(accounts);
     }
 
-    @GetMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<ResponseEntity<Account>> getAccountById(@PathVariable String id) {
-        return accountService.getAccountById(id)
-                .map(ResponseEntity::ok)
-                .defaultIfEmpty(ResponseEntity.notFound().build());
+    @GetMapping("/{id}")
+    public ResponseEntity<Account> getAccountById(@PathVariable String id) {
+        try {
+            Account account = accountService.getAccountById(id);
+            return ResponseEntity.ok(account);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
-//    @PutMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-//    public Mono<ResponseEntity<Account>> updateAccount(
-//            @PathVariable String id,
-//            @RequestBody Account account) {
-//        return accountService.updateAccount(id, account)
-//                .map(ResponseEntity::ok)
-//                .defaultIfEmpty(ResponseEntity.notFound().build());
-//    }
+    @PutMapping("/{id}")
+    public ResponseEntity<Account> updateAccount(@PathVariable String id, @RequestBody Account account) {
+        try {
+            Account updated = accountService.updateAccount(id, account);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 
-    @DeleteMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<ResponseEntity<Void>> deleteAccount(@PathVariable String id) {
-        return accountService.deleteAccount(id)
-                .map(deleted -> ResponseEntity.noContent().build());
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAccount(@PathVariable String id) {
+        accountService.deleteAccount(id);
+        return ResponseEntity.noContent().build();
     }
 }

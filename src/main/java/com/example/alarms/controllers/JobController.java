@@ -2,6 +2,7 @@ package com.example.alarms.controllers;
 
 import com.example.alarms.components.Coordinator;
 import com.example.alarms.dto.*;
+import com.example.alarms.entities.ActionEntity;
 import com.example.alarms.exceptions.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,14 +18,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @RequestMapping("/jobs")
@@ -35,7 +35,7 @@ public class JobController {
     private final Coordinator coordinator;
     private final ActionMapper actionMapper;
 
-    public JobController(Coordinator coordinator, AccountMapper accountMapper, ActionMapper actionMapper) {
+    public JobController(Coordinator coordinator, ActionMapper actionMapper) {
         this.coordinator = coordinator;
         this.actionMapper = actionMapper;
     }
@@ -49,7 +49,7 @@ public class JobController {
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ActionRequest.class)
+                            schema = @Schema(implementation = Action.class)
                     )
             ),
             responses = {
@@ -57,8 +57,8 @@ public class JobController {
                             responseCode = "201",
                             description = "Action created successfully",
                             content = @Content(
-                                    mediaType = "text/event-stream",
-                                    schema = @Schema(implementation = ActionResponse.class)
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = Action.class)
                             )
                     ),
                     @ApiResponse(
@@ -79,31 +79,33 @@ public class JobController {
                     )
             }
     )
-    @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping()
     @ResponseStatus(HttpStatus.CREATED) // This sets the default success status
-    public Mono<ActionResponse> create(@RequestBody ActionRequest action) {
-        return ReactiveSecurityContextHolder.getContext()
-                .map(SecurityContext::getAuthentication)
-                .map(Authentication::getPrincipal)
-                .flatMap(authentication -> coordinator.create(action, authentication))
-                .map(actionMapper::toActionResponse)
-                .onErrorMap(e -> {
-                    if (e instanceof UserNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
-                    } else if (e instanceof InvalidActionException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof RuleProcessingException) {
-                        return new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), e);
-                    } else if (e instanceof SerializationException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof DuplicateKeyException) {
-                        return new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
-                    } else {
-                        log.error("Unexpected error during action creation", e);
-                        return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                "An error occurred while creating the action", e);
-                    }
-                });
+    public ResponseEntity<Action> create(@RequestBody Action action, Authentication authentication) {
+        try {
+
+            // Call imperative version of create (assumed to return Action)
+            ActionEntity createdAction = coordinator.create(action, authentication.getPrincipal()); // this method must be blocking
+
+            Action response = actionMapper.toDto(createdAction);
+            return ResponseEntity.status(HttpStatus.CREATED).build();
+
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
+        } catch (InvalidActionException | SerializationException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        } catch (RuleProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), e);
+        } catch (DuplicateKeyException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Unexpected error during action creation", e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "An error occurred while creating the action",
+                    e
+            );
+        }
     }
 
     @Operation(
@@ -123,7 +125,7 @@ public class JobController {
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ActionRequest.class)
+                            schema = @Schema(implementation = Action.class)
                     )
             ),
             responses = {
@@ -131,8 +133,8 @@ public class JobController {
                             responseCode = "201",
                             description = "Action created successfully",
                             content = @Content(
-                                    mediaType = "text/event-stream",
-                                    schema = @Schema(implementation = ActionResponse.class)
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = Action.class)
                             )
                     ),
                     @ApiResponse(
@@ -153,58 +155,59 @@ public class JobController {
                     )
             }
     )
-    @PutMapping(value = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<ActionResponse> update(@PathVariable Long id, @RequestBody ActionRequest action) {
+    @PutMapping("/{id}")
+    public ResponseEntity<Action> update(@PathVariable Long id, @RequestBody Action action) {
         if (id == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID cannot be null");
         }
 
-        return coordinator.update(action, id)
-                .map(actionMapper::toActionResponse)
-                .onErrorMap(e -> {
-                    if (e instanceof UserNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
-                    } else if (e instanceof InvalidActionException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof EntityNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-                    } else if (e instanceof RuleProcessingException) {
-                        return new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), e);
-                    } else if (e instanceof SerializationException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof DuplicateKeyException) {
-                        return new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
-                    } else {
-                        log.error("Unexpected error during action update for ID {}", id, e);
-                        return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                "An error occurred while updating the action", e);
-                    }
-                });
+        try {
+            ActionEntity updated = coordinator.update(action, id); // must be imperative
+            Action response = actionMapper.toDto(updated);
+            return ResponseEntity.ok(response);
+
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
+        } catch (InvalidActionException | SerializationException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        } catch (EntityNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        } catch (RuleProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), e);
+        } catch (DuplicateKeyException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Unexpected error during action update for ID {}", id, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "An error occurred while updating the action", e);
+        }
     }
 
-
-    @DeleteMapping(value = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<Void> delete(@PathVariable Long id) {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (id == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID cannot be null");
         }
 
-        return coordinator.delete(id)
-                .onErrorMap(e -> {
-                    if (e instanceof EntityNotFoundException) {
-                        log.warn("Action with ID {} not found for deletion", id);
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Action not found with ID: " + id, e);
-                    } else {
-                        log.error("Unexpected error during action deletion for ID {}", id, e);
-                        return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                "Failed to delete action with ID: " + id, e);
-                    }
-                });
+        try {
+            coordinator.delete(id); // now imperative
+            return ResponseEntity.noContent().build();
+
+        } catch (EntityNotFoundException e) {
+            log.warn("Action with ID {} not found for deletion", id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Action not found with ID: " + id, e);
+
+        } catch (Exception e) {
+            log.error("Unexpected error during action deletion for ID {}", id, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to delete action with ID: " + id, e);
+        }
     }
 
 
-    @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ActionResponse> getAll(
+
+    @GetMapping
+    public ResponseEntity<List<Action>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String sortBy,
@@ -218,62 +221,74 @@ public class JobController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must be between 1 and 100");
         }
 
-        // Create pagination object
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by(direction.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC,
-                        sortBy != null ? sortBy : "id")
-        );
+        try {
+            // Create pagination object
+            Pageable pageable = PageRequest.of(
+                    page,
+                    size,
+                    Sort.by(
+                            direction.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC,
+                            sortBy != null ? sortBy : "id"
+                    )
+            );
 
-        return coordinator.get(pageable)
-                .map(actionMapper::toActionResponse)
-                .onErrorMap(e -> {
-                    log.error("Error retrieving actions: {}", e.getMessage(), e);
+            List<ActionEntity> entities = coordinator.get(pageable); // imperative method
+            List<Action> responses = entities.stream()
+                    .map(actionMapper::toDto)
+                    .toList();
 
-                    // Map different exceptions to appropriate HTTP status exceptions
-                    if (e instanceof IllegalArgumentException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof EntityNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-                    }  else if (e instanceof DataAccessException) {
-                        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database service unavailable", e);
-                    } else {
-                        // For unexpected errors
-                        return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", e);
-                    }
-                });
+            return ResponseEntity.ok(responses);
+
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+
+        } catch (EntityNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+
+        } catch (DataAccessException e) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database service unavailable", e);
+
+        } catch (Exception e) {
+            log.error("Error retrieving actions: {}", e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", e);
+        }
     }
 
-    @GetMapping(value = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<ActionResponse> get(@PathVariable Long id) {
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Action> get(@PathVariable Long id) {
         if (id == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page index must be greater than or equal to 0");
         }
 
-        return coordinator.get(id)
-                .switchIfEmpty(Mono.error(new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Action not found with ID: " + id)))
-                .map(actionMapper::toActionResponse)
-                .onErrorMap(e -> {
-                    log.error("Error retrieving actions: {}", e.getMessage(), e);
+        try {
+            Optional<ActionEntity> optionalAction = coordinator.get(id); // now imperative
 
-                    if (e instanceof ResponseStatusException) {
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-                    }
-                    // Map different exceptions to appropriate HTTP status exceptions
-                    if (e instanceof IllegalArgumentException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof EntityNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-                    }  else if (e instanceof DataAccessException) {
-                        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database service unavailable", e);
-                    } else {
-                        // For unexpected errors
-                        return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", e);
-                    }
-                });
+            if (optionalAction.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Action not found with ID: " + id);
+            }
+
+            Action response = actionMapper.toDto(optionalAction.get());
+            return ResponseEntity.ok(response);
+
+        } catch (ResponseStatusException e) {
+            throw e;
+
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+
+        } catch (EntityNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+
+        } catch (DataAccessException e) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database service unavailable", e);
+
+        } catch (Exception e) {
+            log.error("Error retrieving action: {}", e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", e);
+        }
     }
+
 }
 
 

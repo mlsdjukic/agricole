@@ -1,6 +1,6 @@
 package com.example.alarms.actions.GmailAction;
 
-import com.example.alarms.actions.Action;
+import com.example.alarms.actions.IAction;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -19,7 +19,7 @@ import java.util.*;
 @Slf4j
 @Setter
 @Getter
-public class GmailAction implements Action {
+public class GmailAction implements IAction {
 
     private static final String IMAP_HOST = "imap.gmail.com";
     private static final String IMAP_PORT = "993";

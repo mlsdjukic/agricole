@@ -88,7 +88,7 @@ public class FindPatternInEws implements Rule {
         }
 
         try {
-            for (com.example.alarms.rules.FindPatternInEws.FindPatternInEwsDefinition.PatternDefinition pattern : this.params.getPatterns()){
+            for (FindPatternInEwsDefinition.PatternDefinition pattern : this.params.getPatterns()){
                 String container = extractContainer(email, pattern.getLocation());
                 if (container == null) {
                     return;

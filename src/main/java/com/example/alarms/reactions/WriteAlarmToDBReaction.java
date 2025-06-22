@@ -23,7 +23,6 @@ public class WriteAlarmToDBReaction implements Reaction{
 
     @Override
     public void execute(Notification notification) {
-        alarmService.save(new AlarmRequest(notification.getRuleId(), notification.getMessage()))
-                .subscribe();
+        alarmService.save(new AlarmRequest(notification.getRuleId(), notification.getMessage()));
     }
 }

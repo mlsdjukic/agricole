@@ -4,9 +4,11 @@ import com.example.alarms.dto.AlarmRequest;
 import com.example.alarms.dto.AlarmResponse;
 import com.example.alarms.entities.AlarmEntity;
 import com.example.alarms.repositories.AlarmRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class AlarmService {
@@ -18,40 +20,41 @@ public class AlarmService {
     }
 
     // Save or update an alarm
-    public Mono<AlarmResponse> save(AlarmRequest AlarmRequest) {
-        AlarmEntity alarmEntity = toEntity(AlarmRequest);
-        return alarmRepository.save(alarmEntity)
-                .map(this::toResponseDto);
+    public AlarmResponse save(AlarmRequest alarmRequest) {
+        AlarmEntity alarmEntity = toEntity(alarmRequest);
+        AlarmEntity saved = alarmRepository.save(alarmEntity);
+        return toResponseDto(saved);
     }
 
-    public Flux<AlarmResponse> getAll() {
-        return alarmRepository.findAll()
-                .map(this::toResponseDto);
+    // Get all alarms
+    public List<AlarmResponse> getAll() {
+        return alarmRepository.findAll().stream()
+                .map(this::toResponseDto)
+                .toList();
     }
 
     // Get alarm by ID
-    public Mono<AlarmResponse> getById(Long id) {
+    public Optional<AlarmResponse> getById(Long id) {
         return alarmRepository.findById(id)
                 .map(this::toResponseDto);
     }
 
     // Delete alarm by ID
-    public Mono<Void> deleteById(Long id) {
-        return alarmRepository.deleteById(id);
+    public void deleteById(Long id) {
+        alarmRepository.deleteById(id);
     }
 
     // Get the last record by ruleId
-    public Mono<AlarmResponse> getLastRecordByRuleId(Long ruleId) {
+    public Optional<AlarmResponse> getLastRecordByRuleId(Long ruleId) {
         return alarmRepository.findFirstByRuleIdOrderByIdDesc(ruleId)
                 .map(this::toResponseDto);
     }
 
     // Get all alarms with pagination
-    public Flux<AlarmResponse> getAllWithPagination(int page, int size) {
-        return alarmRepository.findAllBy()
-                .skip((long) page * size)
-                .take(size)
-                .map(this::toResponseDto);
+    public List<AlarmResponse> getAllWithPagination(int page, int size) {
+        return alarmRepository.findAll(PageRequest.of(page, size)).stream()
+                .map(this::toResponseDto)
+                .toList();
     }
 
     // Mapping methods
@@ -70,4 +73,3 @@ public class AlarmService {
         return dto;
     }
 }
-

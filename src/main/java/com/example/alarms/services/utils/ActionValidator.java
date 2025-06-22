@@ -21,7 +21,7 @@ public class ActionValidator {
      * @param request The request to validate
      * @return List of validation errors, empty if valid
      */
-    public static List<String> validateCreateUpdateRequest(ActionRequest request) {
+    public static List<String> validateCreateUpdateRequest(Action request) {
         List<String> errors = new ArrayList<>();
 
         // Validate main request structure
@@ -60,9 +60,10 @@ public class ActionValidator {
         } else if (request.getRules().isEmpty()) {
             errors.add("Rules array cannot be empty");
         } else {
-            for (int i = 0; i < request.getRules().size(); i++) {
-                Rule rule = request.getRules().get(i);
-                errors.addAll(validateRule(rule, i));
+            int index = 0;
+            for (Rule rule : request.getRules()) {  // Assuming request.getRules() returns a Set<Rule>
+                errors.addAll(validateRule(rule, index));
+                index++;
             }
         }
 
@@ -175,7 +176,7 @@ public class ActionValidator {
         } else if ("FindPatternInEws".equals(rule.getName())) {
 
             // Required fields for FindPatternInEws
-            if (!definitionMap.containsKey("pattern") || definitionMap.get("pattern") == null) {
+            if (!definitionMap.containsKey("patterns") || definitionMap.get("patterns") == null) {
                 errors.add(prefix + "definition requires pattern field");
             }
 
@@ -231,9 +232,11 @@ public class ActionValidator {
         if (rule.getReactions() == null) {
             errors.add(prefix + "reactions array is required (can be empty)");
         } else {
-            for (int i = 0; i < rule.getReactions().size(); i++) {
-                Reaction reaction = rule.getReactions().get(i);
+
+            int i = 0;
+            for (Reaction reaction : rule.getReactions()) {  // Assuming request.getRules() returns a Set<Rule>
                 errors.addAll(validateReaction(reaction, index, i));
+                i++;
             }
         }
 

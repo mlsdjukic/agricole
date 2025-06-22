@@ -7,46 +7,48 @@ import com.example.alarms.repositories.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
 public class AccountService {
 
     private final AccountRepository accountRepository;
-    private  final AccountMapper accountMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AccountMapper accountMapper;
 
-    public Mono<Account> createAccount(Account account) {
+    public Account createAccount(Account account) {
         AccountEntity accountEntity = accountMapper.toEntity(account);
-        accountEntity.setPassword("{bcrypt}" + passwordEncoder.encode(account.getPassword()));
-        return accountRepository.save(accountEntity)
-                .map(accountMapper::toDTO);
+        accountEntity.setPassword(passwordEncoder.encode(account.getPassword()));
+        AccountEntity saved = accountRepository.save(accountEntity);
+        return accountMapper.toDTO(saved);
     }
 
-    public Flux<Account> getAllAccounts() {
-        return accountRepository.findAll()
-                .map(accountMapper::toDTO);
+    public List<Account> getAllAccounts() {
+        return accountRepository.findAll().stream()
+                .map(accountMapper::toDTO)
+                .toList();
     }
 
-    public Mono<Account> getAccountById(String id) {
-        return accountRepository.findById(id)
-                .map(accountMapper::toDTO);
-
+    public Account getAccountById(String id) {
+        Optional<AccountEntity> entityOpt = accountRepository.findById(id);
+        return entityOpt.map(accountMapper::toDTO)
+                .orElseThrow(() -> new RuntimeException("Account not found with ID: " + id));
     }
 
-    public Mono<Account> updateAccount(String id, Account updatedDTO) {
-        return accountRepository.findById(id)
-                .flatMap(existingAccount -> {
-                    existingAccount.setUsername(updatedDTO.getUsername());
-                    existingAccount.setPassword("{bcrypt}" + passwordEncoder.encode(updatedDTO.getPassword()));
-                    return accountRepository.save(existingAccount);
-                })
-                .map(accountMapper::toDTO);
+    public Account updateAccount(String id, Account updatedDTO) {
+        AccountEntity existing = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Account not found with ID: " + id));
+
+        existing.setUsername(updatedDTO.getUsername());
+        existing.setPassword("{bcrypt}" + passwordEncoder.encode(updatedDTO.getPassword()));
+        AccountEntity updated = accountRepository.save(existing);
+        return accountMapper.toDTO(updated);
     }
 
-    public Mono<Void> deleteAccount(String id) {
-        return accountRepository.deleteById(id);
+    public void deleteAccount(String id) {
+        accountRepository.deleteById(id);
     }
 }

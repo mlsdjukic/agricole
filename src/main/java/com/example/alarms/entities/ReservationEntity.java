@@ -1,12 +1,12 @@
 package com.example.alarms.entities;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 
@@ -14,18 +14,25 @@ import java.time.LocalDateTime;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table("reservations")
+@Entity
+@Table(name = "reservations")
 public class ReservationEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String status;
+
     private String lockedBy;
 
-    private Long actionId;
-
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdDate;
 
-    private LocalDateTime locked_at;
+    private LocalDateTime lockedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "action_id", nullable = false)
+    private ActionEntity action;
 }
+

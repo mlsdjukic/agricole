@@ -1,18 +1,17 @@
 package com.example.alarms.repositories;
 
 import com.example.alarms.entities.AlarmEntity;
-import org.springframework.data.r2dbc.repository.Query;
-import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
-@Repository
-public interface AlarmRepository extends ReactiveCrudRepository<AlarmEntity, Long> {
+import java.util.List;
+import java.util.Optional;
 
+public interface AlarmRepository extends JpaRepository<AlarmEntity, Long> {
 
-    @Query("SELECT * FROM alarms WHERE rule_id = :ruleId ORDER BY id DESC LIMIT 1")
-    Mono<AlarmEntity> findFirstByRuleIdOrderByIdDesc(Long ruleId);
+    @Query(value = "SELECT * FROM alarms WHERE rule_id = :ruleId ORDER BY id DESC LIMIT 1", nativeQuery = true)
+    Optional<AlarmEntity> findFirstByRuleIdOrderByIdDesc(Long ruleId);
 
-    Flux<AlarmEntity> findAllBy();
+    List<AlarmEntity> findAll();
 }

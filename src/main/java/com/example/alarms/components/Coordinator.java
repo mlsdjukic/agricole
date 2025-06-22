@@ -1,7 +1,7 @@
 package com.example.alarms.components;
 
-import com.example.alarms.actions.Action;
-import com.example.alarms.dto.ActionRequest;
+import com.example.alarms.actions.IAction;
+import com.example.alarms.dto.Action;
 import com.example.alarms.dto.Jobs;
 import com.example.alarms.dto.RuleMapper;
 import com.example.alarms.entities.ActionEntity;
@@ -30,6 +30,8 @@ import java.lang.reflect.Constructor;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,9 +47,10 @@ import reactor.util.function.Tuples;
 @Component
 public class Coordinator {
 
-    private  final RuleMapper ruleMapper;
     private final ReservationService reservationService;
     private final ActionService actionService;
+
+    private  final RuleMapper ruleMapper;
 
     private final ConcurrentHashMap<Long, JobDescription> subscriptions;
 
@@ -57,10 +60,10 @@ public class Coordinator {
     private volatile boolean isRunning;
 
 
-    public Coordinator(ActionService actionService, RuleMapper ruleMapper, ReservationService reservationService, Environment env) {
+    public Coordinator(ActionService actionService, ReservationService reservationService, RuleMapper ruleMapper, Environment env) {
         this.actionService = actionService;
-        this.ruleMapper = ruleMapper;
         this.reservationService = reservationService;
+        this.ruleMapper = ruleMapper;
 
         this.subscriptions = new ConcurrentHashMap<>();
 
@@ -136,6 +139,7 @@ public class Coordinator {
     public void start() {
         isRunning = true;
 
+        setupHeartbeat();
         initializeJobs(this.batchSize - this.subscriptions.size())
                 // Handle errors at the individual job level
                 .onErrorContinue((error, ___) ->
@@ -148,58 +152,81 @@ public class Coordinator {
                 .subscribe();
 
 
-
-
         log.info("Job processor started with instance ID: {}", instanceId);
     }
+
+    private Disposable setupHeartbeat() {
+        return Flux.interval(Duration.ofSeconds(30))
+                .publishOn(Schedulers.boundedElastic())
+                .flatMap(tick -> Flux.fromIterable(subscriptions.entrySet())
+                        .flatMap(entry -> {
+                            Long jobId = entry.getValue().getJobId(); // assuming this method exists
+                            return Mono.fromRunnable(() ->
+                                            reservationService.updateHeartbeat(jobId, instanceId, LocalDateTime.now())
+                                    )
+                                    .subscribeOn(Schedulers.boundedElastic())
+                                    .onErrorResume(err -> {
+                                        log.error("Failed to update heartbeat for job {}: {}", jobId, err.getMessage());
+                                        return Mono.empty();
+                                    });
+                        }))
+                .subscribe();
+    }
+
 
     public Flux<ReservationEntity> initializeJobs(int numOfJobs) {
         LocalDateTime timeoutThreshold = LocalDateTime.now().minus(jobTimeout);
 
         // Fetch jobs from the database
-        return reservationService.findAvailableJobs(timeoutThreshold, numOfJobs)
+        return Flux.fromIterable(reservationService.findAvailableJobs(timeoutThreshold, numOfJobs))
                 .flatMap(job -> tryAcquireAndProcessJob(job, timeoutThreshold));
     }
 
     private Mono<ReservationEntity> tryAcquireAndProcessJob(ReservationEntity job, LocalDateTime timeoutThreshold) {
-        return reservationService.tryAcquireJob(
-                        job.getId(),
-                        instanceId,
-                        LocalDateTime.now(),
-                        timeoutThreshold
+
+        return Mono.fromCallable(() ->
+                        reservationService.tryAcquireJob(
+                                job.getId(),
+                                instanceId,
+                                LocalDateTime.now(),
+                                timeoutThreshold
+                        )
                 )
-                .filter(acquired -> acquired)
+                .subscribeOn(Schedulers.boundedElastic())
+                .filter(acquired -> acquired > 0)
                 .flatMap(__ -> {
-                    // Get the associated Action for this Job
-                    Long actionId = job.getActionId();
+                    Long actionId = job.getAction() != null ? job.getAction().getId() : null;
+
                     if (actionId == null) {
-                        return reservationService.releaseJob(job.getId(), instanceId)
+                        return Mono.fromRunnable(() ->
+                                        reservationService.releaseJob(job.getId(), instanceId)
+                                ).subscribeOn(Schedulers.boundedElastic())
                                 .then(Mono.empty());
                     }
 
-                    return actionService.getActionById(actionId)
-                            .flatMap(action ->
-                                    // Process the job reactively and then return the job
-                                    scheduleJob(action, job.getId())
-                                            .thenReturn(job)
-                            )
-                            .switchIfEmpty(Mono.defer(() ->
-                                    // Return a Mono that completes only after releasing the job
-                                    reservationService.releaseJob(job.getId(), instanceId)
-                                            .then(Mono.empty())
-                            ));
+                    return Mono.fromCallable(() -> actionService.getActionByIdWithRulesAndReactions(actionId))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .flatMap(action -> {
+                                return action.map(actionEntity -> scheduleJob(actionEntity, job.getId())
+                                        .thenReturn(job)).orElseGet(() -> Mono.fromRunnable(() ->
+                                                reservationService.releaseJob(job.getId(), instanceId)
+                                        ).subscribeOn(Schedulers.boundedElastic())
+                                        .then(Mono.empty()));
+
+                            });
                 });
     }
 
-    public Action createAction(ActionEntity actionEntity) throws Exception {
+
+    public IAction createAction(ActionEntity actionEntity) throws Exception {
         String actionClassName = "com.example.alarms.actions." + actionEntity.getType() + "." + actionEntity.getType();
-        return (Action) createInstance(actionClassName, new Class<?>[]{String.class, Long.class}, actionEntity.getParams(), actionEntity.getId());
+        return (IAction) createInstance(actionClassName, new Class<?>[]{String.class, Long.class}, actionEntity.getParams(), actionEntity.getId());
     }
 
-    public List<Rule> createRules(List<RuleEntity> ruleEntities) {
+    public Set<Rule> createRules(Set<RuleEntity> ruleEntities) {
         return ruleEntities.stream()
                 .map(this::createRule)
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 
     private Rule createRule(RuleEntity ruleEntity) {
@@ -221,9 +248,14 @@ public class Coordinator {
     private Reaction createReaction(ReactionEntity reactionEntity) {
         String reactionClassName = "com.example.alarms.reactions." + reactionEntity.getName() + "." + reactionEntity.getName();
         try {
-            return (Reaction) createInstance(reactionClassName,
+            Long ruleId = reactionEntity.getRule() != null ? reactionEntity.getRule().getId() : null;
+
+            return (Reaction) createInstance(
+                    reactionClassName,
                     new Class<?>[]{String.class, String.class, Long.class},
-                    reactionEntity.getParams(), reactionEntity.getName(), reactionEntity.getRuleId());
+                    reactionEntity.getParams(),
+                    reactionEntity.getName(),
+                    ruleId);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create Reaction: " + reactionEntity.getName(), e);
         }
@@ -246,8 +278,8 @@ public class Coordinator {
         // Create action and rules using reactive error handling
         return createActionAndRules(actionEntity)
                 .flatMap(components -> {
-                    Action action = components.getT1();
-                    List<Rule> rules = components.getT2();
+                    IAction action = components.getT1();
+                    Set<Rule> rules = components.getT2();
 
                     // First execution immediately
                     Flux<Void> initialExecution = executeActionAndRules(action, rules)
@@ -271,13 +303,13 @@ public class Coordinator {
     /**
      * Creates the action and rules in a reactive way.
      */
-    private Mono<Tuple2<Action, List<Rule>>> createActionAndRules(ActionEntity actionEntity) {
+    private Mono<Tuple2<IAction, Set<Rule>>> createActionAndRules(ActionEntity actionEntity) {
         return Mono.defer(() -> {
                     log.debug("Mono.defer was subscribed to");
                     try {
                         log.debug("Entering try block");
-                        Action action = createAction(actionEntity);
-                        List<Rule> rules = createRules(actionEntity.getRules());
+                        IAction action = createAction(actionEntity);
+                        Set<Rule> rules = createRules(actionEntity.getRules());
                         return Mono.just(Tuples.of(action, rules));
                     } catch (Exception e) {
                         Throwable original = e.getCause();
@@ -292,44 +324,30 @@ public class Coordinator {
     /**
      * Executes an action and its associated rules.
      */
-    private Flux<Void> executeActionAndRules(Action action, List<Rule> rules) {
+    private Flux<Void> executeActionAndRules(IAction action, Set<Rule> rules) {
         return action.execute()
                 .flatMap(data -> Flux.fromIterable(rules)
                         .doOnNext(rule -> rule.execute(data))
-                        .then());
+                        .then())
+                .onErrorResume(e -> {
+                    log.error("Error: {}", e.getMessage(), e);
+                    return Flux.empty();
+                });
     }
 
     /**
      * Sets up periodic execution of an action and its rules.
      */
-    private void setupPeriodicExecution(Action action, List<Rule> rules,
+    private void setupPeriodicExecution(IAction action, Set<Rule> rules,
                                         ActionEntity actionEntity, Long jobId) {
-
-        AtomicInteger counter = new AtomicInteger(0);
 
         Disposable subscription = Flux.interval(Duration.ofSeconds(action.getInterval()))
                 .publishOn(Schedulers.boundedElastic())
-                .concatMap(tick -> {
-                    Flux<Void> actionFlux = executeActionAndRules(action, rules)
+                .concatMap(tick -> executeActionAndRules(action, rules)
                         .onErrorResume(err -> {
                             log.error("Error executing action: {}", err.getMessage());
                             return Flux.empty(); // Continue on error
-                        });
-                    // Update heartbeat only every 6 ticks (60 seconds if interval is 10 seconds)
-                    if (counter.incrementAndGet() % 6 == 0) {
-                        return actionFlux.thenMany(
-                                reservationService.updateHeartbeat(jobId, instanceId, LocalDateTime.now())
-                                        .onErrorResume(err -> {
-                                            log.error("Failed to update heartbeat for job {}: {}", jobId, err.getMessage());
-                                            // Continue despite heartbeat errors
-                                            return Mono.empty();
-                                        })
-                                        .thenMany(Flux.empty())
-                        );
-                    }
-                    return actionFlux;
-
-                })
+                        }))
                 .onErrorResume(throwable -> {
                     log.error("Error in action execution of a job {} with message: {}", jobId, throwable.getMessage());
                     return Flux.empty();
@@ -347,9 +365,9 @@ public class Coordinator {
         subscriptions.put(actionEntity.getId(), new JobDescription(subscription, jobId, jobs));
     }
 
-    public Mono<Void> stopAction(Long actionId) {
+    public void  stopAction(Long actionId) {
         if (actionId == null) {
-            return Mono.error(new IllegalArgumentException("Action ID cannot be null"));
+            throw new IllegalArgumentException("Action ID cannot be null");
         }
 
         // Retrieve the job description
@@ -359,7 +377,7 @@ public class Coordinator {
         if (jobDescription == null) {
 
             log.warn("No active job found for action ID: {}", actionId);
-            return Mono.empty();
+            return;
         }
 
         // Dispose the subscription if it exists
@@ -382,20 +400,13 @@ public class Coordinator {
             log.debug("Removed job description from subscriptions map for action ID: {}", actionId);
         }
 
-        // Release the job and return the reactive result
-        return reservationService.releaseJob(jobDescription.getJobId(), this.instanceId)
-                .doOnSuccess(v -> log.info("Successfully released job {} for action ID {}",
-                        jobDescription.getJobId(), actionId))
-                .doOnError(error -> log.error("Error releasing job {} for action ID {}: {}",
-                        jobDescription.getJobId(), actionId, error.getMessage(), error))
-                .onErrorResume(error -> {
-                    // Note: We're not propagating errors from releaseJob since we've already
-                    // disposed of the subscription and removed it from our tracking map.
-                    // The job stopping is considered successful even if the release fails.
-                    log.warn("Error occurred while releasing job {} for action ID {}, but action was stopped",
-                            jobDescription.getJobId(), actionId);
-                    return Mono.empty();
-                });
+        try {
+            reservationService.releaseJob(jobDescription.getJobId(), this.instanceId);
+            log.info("Successfully released job {} for action ID {}", jobDescription.getJobId(), actionId);
+        } catch (Exception error) {
+            log.warn("Error occurred while releasing job {} for action ID {}, but action was stopped",
+                    jobDescription.getJobId(), actionId);
+        }
     }
 
     public boolean isActionRunning(Long actionId) {
@@ -403,90 +414,91 @@ public class Coordinator {
         return subscriptions.containsKey(actionId);
     }
 
-    public Mono<ActionEntity> create(ActionRequest action, Object authentication) {
+    public ActionEntity create(Action action, Object authentication) {
         // Extract user ID from authentication context
         Long userId = authentication instanceof SecurityAccount sc ? sc.getAccount().getId() : null;
 
         if (userId == null) {
-            return Mono.error(new UserNotFoundException("User ID is null"));
+            throw new UserNotFoundException("User ID is null");
         }
+        try {
+            // Create the action
+            ActionEntity actionEntity = actionService.create(action, userId); // must be blocking
 
-        return actionService.create(action, userId)
-                .flatMap(actionEntity -> {
-                    // Create a job and properly chain it in the reactive flow
-                    ReservationEntity job = new ReservationEntity(
-                            null,               // id
-                            "pending",               // description
-                            this.instanceId,             // status or identifier
-                            actionEntity.getId(), // actionId
-                            null,               // lockedBy
-                            LocalDateTime.now() // createdAt
-                    );
+            // Create a job and properly chain it in the reactive flow
+            ReservationEntity job = new ReservationEntity(
+                    null,               // id
+                    "pending",               // description
+                    this.instanceId,             // status or identifier
+                    null,               // createdDate
+                    LocalDateTime.now(), // createdAt
+                    actionEntity // actionId
+            );
 
-                    return reservationService.save(job)
-                            .thenReturn(actionEntity);
-                })
-                .onErrorMap(ex -> {
-                    // Don't wrap our custom exceptions
-                    if (ex instanceof UserNotFoundException ||
-                            ex instanceof InvalidActionException ||
-                            ex instanceof RuleProcessingException ||
-                            ex instanceof SerializationException) {
-                        return ex;
-                    }
-                    // More detailed error logging
-                    log.error("Failed to create action: {}", ex.getMessage(), ex);
-                    return new RuntimeException("Failed to create action", ex);
-                });
+            reservationService.save(job); // must be blocking
+
+            return actionEntity;
+
+        } catch (InvalidActionException |
+                 RuleProcessingException |
+                 SerializationException e) {
+            throw e; // rethrow known exceptions
+        } catch (Exception ex) {
+            log.error("Failed to create action: {}", ex.getMessage(), ex);
+            throw new RuntimeException("Failed to create action", ex);
+        }
     }
 
-    public Mono<ActionEntity> update(ActionRequest action, Long id) {
-            return this.stopAction(id)
-                .then(actionService.update(action, id))
-                .onErrorMap(ex -> {
-                    // Don't wrap our custom exceptions
-                    if (ex instanceof UserNotFoundException ||
-                            ex instanceof InvalidActionException ||
-                            ex instanceof RuleProcessingException ||
-                            ex instanceof EntityNotFoundException ||
-                            ex instanceof IllegalArgumentException ||
-                            ex instanceof SerializationException) {
-                        return ex;
-                    }
-                    // More detailed error logging
-                    log.error("Failed to update action: {}", ex.getMessage(), ex);
-                    return new RuntimeException("Failed to update action", ex);
-                });    }
+    public ActionEntity update(Action action, Long id) {
+        try {
+            // First, stop the action
+            this.stopAction(id); // this must now be imperative
 
+            // Then update the action
+            return actionService.update(action, id); // imperative method
 
-    public Mono<Void> delete(Long actionId) {
-        return this.stopAction(actionId)  // Now returns Mono<Void> directly
-                .then(actionService.deleteAction(actionId))
-                .then(reservationService.deleteByActionId(actionId))
-                .doOnSuccess(__ -> subscriptions.remove(actionId))
-                .onErrorResume(ex -> {
-                    log.error("Failed to delete action {}: {}", actionId, ex.getMessage(), ex);
-                    return Mono.error(new RuntimeException("Failed to delete action", ex));
-                });
+        } catch (UserNotFoundException |
+                 InvalidActionException |
+                 RuleProcessingException |
+                 EntityNotFoundException |
+                 IllegalArgumentException |
+                 SerializationException ex) {
+            throw ex; // preserve original exception
+        } catch (Exception ex) {
+            log.error("Failed to update action: {}", ex.getMessage(), ex);
+            throw new RuntimeException("Failed to update action", ex);
+        }
     }
 
-    public Flux<ActionEntity> get(Pageable pageable) {
-        return actionService.getAll(pageable)
-                .onErrorMap(e -> {
-                    log.error("Error in coordinator while fetching actions: {}", e.getMessage());
-                    return e instanceof IllegalArgumentException ?
-                            e : new RuntimeException("Failed to retrieve actions", e);
-                });
+
+    public void delete(Long actionId) {
+            // Stop the action (already imperative now)
+            this.stopAction(actionId);
+
+            Optional<ActionEntity> actionEntity = actionService.getActionById(actionId);
+            if (actionEntity.isEmpty()){
+                throw new EntityNotFoundException("Action with id " +  actionId + " not found");
+            }
+            // Delete related reservation
+            reservationService.deleteByActionId(actionEntity.get()); // must be imperative
+            // Delete the action
+            actionService.deleteAction(actionId); // must be imperative
+
+
+            // Clean up subscriptions
+            subscriptions.remove(actionId);
+
     }
 
-    public Mono<ActionEntity> get(Long id) {
-        return actionService.getActionById(id)
-                .onErrorMap(e -> {
-                    log.error("Error in coordinator while fetching action {} with id: {}", e.getMessage(), id);
-                    return e instanceof IllegalArgumentException ?
-                            e : new RuntimeException("Failed to retrieve actions", e);
-                });
+
+    public List<ActionEntity> get(Pageable pageable) {
+        return actionService.getAll(pageable); // assuming a standard JPA call
     }
+
+    public Optional<ActionEntity> get(Long id) {
+        return actionService.getActionById(id);
+    }
+
 
     @Getter
     @Setter

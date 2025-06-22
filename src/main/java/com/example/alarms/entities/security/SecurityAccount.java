@@ -1,21 +1,22 @@
 package com.example.alarms.entities.security;
 
 import com.example.alarms.entities.AccountEntity;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
 
 @Getter
 @Setter
-@RequiredArgsConstructor
+@NoArgsConstructor
+@AllArgsConstructor
+@Component
 public class SecurityAccount implements UserDetails {
 
-    private final AccountEntity account;
+    private AccountEntity account;
 
 
     @Override

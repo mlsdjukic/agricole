@@ -1,12 +1,13 @@
 package com.example.alarms.controllers;
+
 import com.example.alarms.dto.AlarmRequest;
 import com.example.alarms.dto.AlarmResponse;
 import com.example.alarms.services.AlarmService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/alarms")
@@ -20,37 +21,47 @@ public class AlarmController {
     }
 
     // Create or update an alarm
-    @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<AlarmResponse> createOrUpdateAlarm(@RequestBody AlarmRequest AlarmRequest) {
-        return alarmService.save(AlarmRequest);
+    @PostMapping
+    public ResponseEntity<AlarmResponse> createOrUpdateAlarm(@RequestBody AlarmRequest alarmRequest) {
+        AlarmResponse response = alarmService.save(alarmRequest);
+        return ResponseEntity.ok(response);
     }
 
     // Get alarm by ID
-    @GetMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<AlarmResponse> getAlarmById(@PathVariable Long id) {
-        return alarmService.getById(id);
+    @GetMapping("/{id}")
+    public ResponseEntity<AlarmResponse> getAlarmById(@PathVariable Long id) {
+        return alarmService.getById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // Delete alarm by ID
-    @DeleteMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<Void> deleteAlarm(@PathVariable Long id) {
-        return alarmService.deleteById(id);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAlarm(@PathVariable Long id) {
+        alarmService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     // Get the last record by ruleId
-    @GetMapping(path = "/last/{ruleId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<AlarmResponse> getLastRecordByRuleId(@PathVariable Long ruleId) {
-        return alarmService.getLastRecordByRuleId(ruleId);
+    @GetMapping("/last/{ruleId}")
+    public ResponseEntity<AlarmResponse> getLastRecordByRuleId(@PathVariable Long ruleId) {
+        return alarmService.getLastRecordByRuleId(ruleId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // Get all alarms with pagination
-    @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<AlarmResponse> getAlarmsPage(@RequestParam int page, @RequestParam int size) {
-        return alarmService.getAllWithPagination(page, size);
+    @GetMapping
+    public ResponseEntity<List<AlarmResponse>> getAlarmsPage(
+            @RequestParam int page,
+            @RequestParam int size
+    ) {
+        return ResponseEntity.ok(alarmService.getAllWithPagination(page, size));
     }
 
+    // Get all alarms
     @GetMapping("/all")
-    public Flux<AlarmResponse> getAllAlarms() {
-        return alarmService.getAll();
+    public ResponseEntity<List<AlarmResponse>> getAllAlarms() {
+        return ResponseEntity.ok(alarmService.getAll());
     }
 }

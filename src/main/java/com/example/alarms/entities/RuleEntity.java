@@ -1,38 +1,50 @@
 package com.example.alarms.entities;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Transient;
-import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table("rules")
+@Entity
+@Table(name = "rules")
+@EntityListeners(AuditingEntityListener.class)
 public class RuleEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String name;
+
     private String definition;
 
-    private Long actionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "action_id")
+    private ActionEntity action;
 
-    @Transient
-    private List<ReactionEntity> reactions;
+    @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ReactionEntity> reactions = new HashSet<>();
 
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdDate;
 
-    @LastModifiedDate
+    @UpdateTimestamp
     private LocalDateTime lastModifiedDate;
 }
+

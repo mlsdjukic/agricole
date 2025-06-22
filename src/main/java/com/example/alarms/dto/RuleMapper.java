@@ -7,9 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Component
 public class RuleMapper {
@@ -34,6 +32,11 @@ public class RuleMapper {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error serializing rule map to JSON", e);
         }
+        Set<ReactionEntity> reactions = new HashSet<>();
+        for (Reaction reaction : dto.getReactions()){
+            reactions.add(reactionMapper.toEntity(reaction));
+        }
+        entity.setReactions(reactions);
         entity.setName(dto.getName());
         return entity;
     }
@@ -50,7 +53,7 @@ public class RuleMapper {
         } catch (Exception e) {
             throw new RuntimeException("Error deserializing JSON to rule map", e);
         }
-        List<Reaction> reactions = new ArrayList<>();
+        Set<Reaction> reactions = new HashSet<>();
         for (ReactionEntity reaction : entity.getReactions()){
             reactions.add(reactionMapper.toDTO(reaction));
         }
@@ -64,12 +67,12 @@ public class RuleMapper {
      * @param entities List of RuleEntity objects
      * @return List of RuleDTO objects
      */
-    public List<Rule> toDtoList(List<RuleEntity> entities) {
+    public Set<Rule> toDtoList(Set<RuleEntity> entities) {
         if (entities == null) {
-            return Collections.emptyList();
+            return Collections.emptySet();
         }
 
-        List<Rule> dtoList = new ArrayList<>(entities.size());
+        Set<Rule> dtoList = new HashSet<>(entities.size());
         for (RuleEntity entity : entities) {
             dtoList.add(toDTO(entity));
         }
@@ -81,12 +84,12 @@ public class RuleMapper {
      * @param dtos List of RuleDTO objects
      * @return List of RuleEntity objects
      */
-    public List<RuleEntity> toEntityList(List<Rule> dtos) {
+    public Set<RuleEntity> toEntityList(Set<Rule> dtos) {
         if (dtos == null) {
-            return Collections.emptyList();
+            return Collections.emptySet();
         }
 
-        List<RuleEntity> entityList = new ArrayList<>(dtos.size());
+        Set<RuleEntity> entityList = new HashSet<>(dtos.size());
         for (Rule dto : dtos) {
             entityList.add(toEntity(dto));
         }

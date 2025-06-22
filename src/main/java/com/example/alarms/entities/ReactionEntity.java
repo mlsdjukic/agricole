@@ -1,13 +1,15 @@
 package com.example.alarms.entities;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -15,20 +17,27 @@ import java.time.LocalDateTime;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table("reactions")
+@Entity
+@Table(name = "reactions")
+@EntityListeners(AuditingEntityListener.class)
 public class ReactionEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
+
     private String params;
 
-    private Long ruleId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "rule_id", nullable  = false)
+    private RuleEntity rule;
 
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdDate;
 
-    @LastModifiedDate
+    @UpdateTimestamp
     private LocalDateTime lastModifiedDate;
 }
+

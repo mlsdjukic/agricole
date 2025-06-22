@@ -23,13 +23,7 @@ public class WebController {
 
     @GetMapping("/")
     public String index(Model model) {
-        List<AlarmResponse> alarms = new ArrayList<>();
-        alarmService.getAll().collectList()
-                .map(list -> {
-                    // use list here
-                    alarms.addAll(list);
-                    return list;
-                }).subscribe(); // or cache / blocking call
+        List<AlarmResponse> alarms = alarmService.getAll();
 
         model.addAttribute("alarms", alarms);
         return "ui/index";  // thymeleaf template ui/index.html

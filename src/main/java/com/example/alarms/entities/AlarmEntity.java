@@ -4,9 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
+import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
@@ -14,14 +14,16 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("alarms")
+@Table(name = "alarms")
+@Entity
 public class AlarmEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long ruleId;
     private String message;
 
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdDate;
 }

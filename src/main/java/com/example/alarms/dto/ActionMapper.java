@@ -1,11 +1,9 @@
 package com.example.alarms.dto;
 
 import com.example.alarms.entities.ActionEntity;
-import com.example.alarms.exceptions.SerializationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,7 +27,7 @@ public class ActionMapper {
      * @return ActionEntity with data from DTO
      * @throws JsonProcessingException if params serialization fails
      */
-    public ActionEntity toEntity(ActionRequest dto) throws JsonProcessingException {
+    public ActionEntity toEntity(Action dto)  {
         if (dto == null) {
             return null;
         }
@@ -55,13 +53,14 @@ public class ActionMapper {
      * @param entity The ActionEntity to convert
      * @return ActionDTO with data from entity
      */
-    public ActionRequest toDto(ActionEntity entity) {
+    public Action toDto(ActionEntity entity) {
         if (entity == null) {
             return null;
         }
 
-        ActionRequest dto = new ActionRequest();
+        Action dto = new Action();
         dto.setType(entity.getType());
+        dto.setId(entity.getId());
 
         // Convert JSON string to Map
         if (entity.getParams() != null && !entity.getParams().isEmpty()) {
@@ -84,22 +83,6 @@ public class ActionMapper {
         return dto;
     }
 
-    /**
-     * Converts a list of ActionEntity objects to a list of ActionDTO objects
-     * @param entities List of ActionEntity objects
-     * @return List of ActionDTO objects
-     */
-    public List<ActionRequest> toDtoList(List<ActionEntity> entities) {
-        if (entities == null) {
-            return Collections.emptyList();
-        }
-
-        List<ActionRequest> dtoList = new ArrayList<>(entities.size());
-        for (ActionEntity entity : entities) {
-            dtoList.add(toDto(entity));
-        }
-        return dtoList;
-    }
 
     /**
      * Converts a list of ActionDTO objects to a list of ActionEntity objects
@@ -107,30 +90,18 @@ public class ActionMapper {
      * @return List of ActionEntity objects
      * @throws JsonProcessingException if params serialization fails
      */
-    public List<ActionEntity> toEntityList(List<ActionRequest> dtos) throws JsonProcessingException {
+    public List<ActionEntity> toEntityList(List<Action> dtos) throws JsonProcessingException {
         if (dtos == null) {
             return Collections.emptyList();
         }
 
         List<ActionEntity> entityList = new ArrayList<>(dtos.size());
-        for (ActionRequest dto : dtos) {
+        for (Action dto : dtos) {
             entityList.add(toEntity(dto));
         }
         return entityList;
     }
 
-    /**
-     * Reactive version of toEntity that handles exceptions with Mono
-     * @param dto The ActionDTO to convert
-     * @return Mono<ActionEntity> with converted entity or error
-     */
-    public Mono<ActionEntity> toEntityReactive(ActionRequest dto) {
-        try {
-            return Mono.just(toEntity(dto));
-        } catch (JsonProcessingException e) {
-            return Mono.error(new SerializationException("Failed to serialize params", e));
-        }
-    }
 
     /**
      * Updates an existing entity with DTO data
@@ -139,7 +110,7 @@ public class ActionMapper {
      * @return Updated entity
      * @throws JsonProcessingException if params serialization fails
      */
-    public ActionEntity updateEntityFromDto(ActionEntity entity, ActionRequest dto) throws JsonProcessingException {
+    public ActionEntity updateEntityFromDto(ActionEntity entity, Action dto) throws JsonProcessingException {
         if (entity == null || dto == null) {
             return entity;
         }
@@ -160,12 +131,12 @@ public class ActionMapper {
      * @param entity The ActionEntity to convert
      * @return ActionDTO with data from entity
      */
-    public ActionResponse toActionResponse(ActionEntity entity) {
+    public Action toActionResponse(ActionEntity entity) {
         if (entity == null) {
             return null;
         }
 
-        ActionResponse dto = new ActionResponse();
+        Action dto = new Action();
         dto.setType(entity.getType());
         dto.setId(entity.getId());
 

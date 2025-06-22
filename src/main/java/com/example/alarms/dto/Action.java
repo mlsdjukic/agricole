@@ -5,17 +5,18 @@ import com.example.alarms.actions.GmailAction.GmailActionParams;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
-/**
- * Request model for creating an action
- */
-@Data
-@Schema(description = "Request to create a new action")
-public class ActionRequest {
+@NoArgsConstructor
+@Getter
+@Setter
+public class Action {
+    private Long id;
     @Schema(description = "The type of action to create",
             example = "EwsAction",
             allowableValues = {"EwsAction", "GmailAction"},
@@ -42,5 +43,6 @@ public class ActionRequest {
     private Object params;
 
     @Schema(description = "Rules to apply for this action", required = true)
-    private List<Rule> rules;
+    private Set<Rule> rules;
+
 }

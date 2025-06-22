@@ -1,11 +1,10 @@
 package com.example.alarms.repositories;
 
 import com.example.alarms.entities.AccountEntity;
-import org.springframework.data.repository.reactive.ReactiveCrudRepository;
-import org.springframework.stereotype.Repository;
-import reactor.core.publisher.Mono;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Repository
-public interface AccountRepository extends ReactiveCrudRepository<AccountEntity, String> {
-    Mono<AccountEntity> findByUsername(String username);
+import java.util.Optional;
+
+public interface AccountRepository extends JpaRepository<AccountEntity, String> {
+    Optional<AccountEntity> findByUsername(String username);
 }

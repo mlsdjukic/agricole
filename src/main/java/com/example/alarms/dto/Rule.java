@@ -7,7 +7,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-import java.util.List; /**
+import java.util.List;
+import java.util.Set;
+
+/**
  * Rule model
  */
 @Data
@@ -39,5 +42,5 @@ public class Rule {
     private Object definition;
 
     @Schema(description = "Reactions to trigger when rule conditions are met", required = true)
-    private List<Reaction> reactions;
+    private Set<Reaction> reactions;
 }

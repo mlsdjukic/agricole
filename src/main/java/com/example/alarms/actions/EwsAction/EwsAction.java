@@ -1,6 +1,6 @@
 package com.example.alarms.actions.EwsAction;
 
-import com.example.alarms.actions.Action;
+import com.example.alarms.actions.IAction;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -28,7 +28,7 @@ import java.util.*;
 @Slf4j
 @Setter
 @Getter
-public class EwsAction implements Action {
+public class EwsAction implements IAction {
     private final String paramsJson;
     private final Long actionId;
     private Date lastChecked = null;
@@ -63,7 +63,7 @@ public class EwsAction implements Action {
                 EventType.NewMail
         );
 
-        log.info("Pull subscription created successfully!");
+        log.info("Pull subscription for action id " + this.actionId + " created successfully!");
     }
 
     private EwsActionParams mapParamsToFields() {

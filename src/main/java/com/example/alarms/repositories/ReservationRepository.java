@@ -1,56 +1,62 @@
 package com.example.alarms.repositories;
 
+import com.example.alarms.entities.ActionEntity;
 import com.example.alarms.entities.ReservationEntity;
-import org.springframework.data.r2dbc.repository.Modifying;
-import org.springframework.data.r2dbc.repository.Query;
-import org.springframework.data.repository.reactive.ReactiveCrudRepository;
-import org.springframework.stereotype.Repository;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+
+import jakarta.transaction.Transactional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
-@Repository
-public interface ReservationRepository extends ReactiveCrudRepository<ReservationEntity, Long> {
+public interface ReservationRepository extends JpaRepository<ReservationEntity, Long> {
+    // Add custom queries if needed
+
+    Void deleteByAction(ActionEntity action);
+
+    Optional<ReservationEntity> findByAction(ActionEntity action);
+
     @Modifying
-    @Query("UPDATE reservations SET locked_by = :lockedBy, locked_at = :lockedAt WHERE id = :id AND (locked_by IS NULL OR locked_at < :timeout)")
-    Mono<Boolean> tryLock(Long id, String lockedBy, LocalDateTime lockedAt, LocalDateTime timeout);
+    @Transactional
+    @Query("UPDATE ReservationEntity r SET r.lockedAt = :now WHERE r.id = :jobId AND r.lockedBy = :instanceId")
+    int updateHeartbeat(@Param("jobId") Long jobId,
+                        @Param("instanceId") String instanceId,
+                        @Param("now") LocalDateTime now);
 
-    Mono<Void> deleteByActionId(Long actionId);
-
+    @Modifying
+    @Transactional
+    @Query("UPDATE ReservationEntity r SET r.status = 'pending', r.lockedBy = NULL WHERE r.id = :jobId AND r.lockedBy = :instanceId")
+    int releaseJob(@Param("jobId") Long jobId,
+                   @Param("instanceId") String instanceId);
 
     @Query("""
-        SELECT TOP(:batchSize) * FROM reservations 
-        WHERE status = 'pending' 
-        OR (status = 'processing' AND locked_at < :timeoutThreshold)
-    """)
-    Flux<ReservationEntity> findAvailableJobs(LocalDateTime timeoutThreshold, int batchSize);
+    SELECT r FROM ReservationEntity r 
+    WHERE r.status = 'pending' 
+    OR (r.status = 'processing' AND r.lockedAt < :timeoutThreshold)
+    ORDER BY r.createdDate ASC
+""")
+    List<ReservationEntity> findAvailableJobs(LocalDateTime timeoutThreshold, int batchSize);
+
 
     @Modifying
+    @Transactional
     @Query("""
-        UPDATE reservations 
-        SET status = 'processing', 
-            locked_by = :instanceId, 
-            locked_at = :now 
-        WHERE id = :jobId 
-        AND (status = 'pending' 
-             OR (status = 'processing' 
-                 AND locked_at < :timeoutThreshold))
+        UPDATE ReservationEntity r SET 
+            r.status = 'processing',
+            r.lockedBy = :instanceId,
+            r.lockedAt = :now
+        WHERE r.id = :jobId AND (
+            r.status = 'pending' OR
+            (r.status = 'processing' AND r.lockedAt < :timeoutThreshold)
+        )
     """)
-    Mono<Boolean> tryAcquireJob(Long jobId, String instanceId,
-                                LocalDateTime now, LocalDateTime timeoutThreshold);
+    int tryAcquireJob(@Param("jobId") Long jobId,
+                      @Param("instanceId") String instanceId,
+                      @Param("now") LocalDateTime now,
+                      @Param("timeoutThreshold") LocalDateTime timeoutThreshold);
 
-    @Modifying
-    @Query("UPDATE reservations SET locked_at = :now WHERE id = :jobId AND locked_by = :instanceId")
-    Mono<Void> updateHeartbeat(Long jobId, String instanceId, LocalDateTime now);
-
-    @Modifying
-    @Query("""
-        UPDATE reservations 
-        SET status = 'pending', 
-            locked_by = NULL 
-        WHERE id = :jobId 
-        AND locked_by = :instanceId
-    """)
-    Mono<Void> releaseJob(Long jobId, String instanceId);
 }

@@ -28,7 +28,7 @@ public class ReactionMapper {
         ReactionEntity entity = new ReactionEntity();
         try {
             // Convert Map to JSON string
-            entity.setName(objectMapper.writeValueAsString(dto.getParams()));
+            entity.setParams(objectMapper.writeValueAsString(dto.getParams()));
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error serializing rule map to JSON", e);
         }
