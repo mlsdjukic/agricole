@@ -18,15 +18,33 @@ CREATE TABLE accounts (
     CONSTRAINT accounts_pkey PRIMARY KEY (id)
 );
 
+CREATE TABLE alarm_types (
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
+    name NVARCHAR(255) NOT NULL UNIQUE,
+    metadata NVARCHAR(MAX) NULL  -- or use SQL Server's `JSON` features for validation/querying
+);
+
+CREATE TABLE alarm_classes (
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
+    name NVARCHAR(255) NOT NULL UNIQUE,
+    metadata NVARCHAR(MAX) NULL  -- or use SQL Server's `JSON` features for validation/querying
+);
+
 -- Create actions table
 CREATE TABLE actions (
     id bigint IDENTITY(1,1) NOT NULL,
     type nvarchar(50) NOT NULL,
     params nvarchar(max) NOT NULL,
+    alarm_type_id BIGINT NULL,
+    alarm_class_id BIGINT NULL,
     user_id bigint NOT NULL,
     created_date datetime2 NOT NULL DEFAULT GETDATE(),
     last_modified_date datetime2 NOT NULL DEFAULT GETDATE(),
-    CONSTRAINT actions_pkey PRIMARY KEY (id)
+    CONSTRAINT actions_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_alarm_type_actions FOREIGN KEY (alarm_type_id) REFERENCES alarm_types(id),
+	CONSTRAINT fk_alarm_class_actions
+       FOREIGN KEY (alarm_class_id)
+       REFERENCES alarm_classes(id)
 );
 
 -- Create reservations table
@@ -55,11 +73,26 @@ CREATE TABLE rules (
 
 -- Create alarms table
 CREATE TABLE alarms (
-    id bigint IDENTITY(1,1) NOT NULL,
+    id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY,
     rule_id bigint NULL,
     message nvarchar(max) NOT NULL,
+    alarm_type_id BIGINT NULL,
+    alarm_class_id BIGINT NULL,
+    status nvarchar(100) NULL,
+    archived bit NULL,
+    created_from nvarchar(255) NULL,
+    metadata nvarchar(max) NULL,
+    relation nvarchar(255) NULL,
     created_date datetime2 NOT NULL DEFAULT GETDATE(),
-    CONSTRAINT alarms_pkey PRIMARY KEY (id)
+    updated_at datetime2 NULL,
+
+    CONSTRAINT fk_alarm_type_alarms
+        FOREIGN KEY (alarm_type_id)
+        REFERENCES alarm_types(id),
+
+    CONSTRAINT fk_alarm_class_alarms
+       FOREIGN KEY (alarm_class_id)
+       REFERENCES alarm_classes(id)
 );
 
 -- Create reactions table

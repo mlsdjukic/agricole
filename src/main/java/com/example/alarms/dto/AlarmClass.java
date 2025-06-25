@@ -9,9 +9,8 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AlarmResponse {
+public class AlarmClass {
     private Long id;
-    private Long ruleId;
-    private String message;
+    private String name;
+    private String metadata;
 }
-

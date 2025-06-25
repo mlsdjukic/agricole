@@ -10,6 +10,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Transient;
+import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,12 @@ public class ActionEntity {
     private String params;
 
     private Long userId;
+
+    @Column("alarm_type_id")
+    private Long alarmTypeId;
+
+    @Column("alarm_class_id")
+    private Long alarmClassId;
 
     @Transient
     private List<RuleEntity> rules;

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import org.springframework.data.relational.core.mapping.Column;
 
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,14 @@ public class ActionRequest {
             @JsonSubTypes.Type(value = GmailActionParams.class, name = "GmailAction")
     })
     private Object params;
+
+    @Schema(description = "The type of alarm that this action will produce",
+            example = "System")
+    private Long alarmTypeId;
+
+    @Schema(description = "The class of alarm that this action will produce",
+            example = "Red")
+    private Long alarmClassId;
 
     @Schema(description = "Rules to apply for this action", required = true)
     private List<Rule> rules;

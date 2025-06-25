@@ -42,6 +42,14 @@ public class ActionResponse {
     })
     private Object params;
 
+    @Schema(description = "The type of alarm that this action will produce",
+            example = "System")
+    private Long alarmTypeId;
+
+    @Schema(description = "The class of alarm that this action will produce",
+            example = "Red")
+    private Long alarmClassId;
+
     @Schema(description = "Rules to apply for this action", required = true)
     private List<Rule> rules;
 

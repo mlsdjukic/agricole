@@ -43,7 +43,16 @@ public class ActionService {
             return Mono.error(new InvalidActionException(errorMessage));
         }
         return Mono.fromCallable(() -> JsonUtils.toJson(paramsMap))
-                .flatMap(jsonParams -> actionRepository.save(new ActionEntity(null, action.getType(), jsonParams, userId, null, null, null)))
+                .flatMap(jsonParams -> actionRepository.save(new ActionEntity(
+                        null,
+                        action.getType(),
+                        jsonParams,
+                        userId,
+                        action.getAlarmTypeId(),
+                        action.getAlarmClassId(),
+                        null,
+                        null,
+                        null)))
                 .flatMap(savedAction ->
                         Flux.fromIterable(action.getRules())
                         .flatMap(rule -> saveRuleAndReactions(savedAction, rule))

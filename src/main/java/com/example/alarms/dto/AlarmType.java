@@ -5,13 +5,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Setter
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AlarmRequest {
-    private Long ruleId;
-    private String message;
-
+public class AlarmType {
+    private Long id;
+    private String name;
+    private String metadata;
 }
-

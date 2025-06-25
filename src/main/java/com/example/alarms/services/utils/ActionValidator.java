@@ -89,11 +89,6 @@ public class ActionValidator {
                 errors.add("EwsAction requires username parameter");
             }
 
-            if (!params.containsKey("password") || params.get("password") == null ||
-                    params.get("password").toString().isEmpty()) {
-                errors.add("EwsAction requires password parameter");
-            }
-
             // Optional fields with validation
             if (params.containsKey("interval")) {
                 Object intervalObj = params.get("interval");
@@ -158,6 +153,9 @@ public class ActionValidator {
         } else {
             Set<String> validRuleNames = new HashSet<>();
             validRuleNames.add("FindPatternInEws");
+            validRuleNames.add("FindPatternInGmail");
+            validRuleNames.add("DetectMissingEmail");
+
             // Add other valid rule names here
 
             if (!validRuleNames.contains(rule.getName())) {
@@ -175,7 +173,7 @@ public class ActionValidator {
         } else if ("FindPatternInEws".equals(rule.getName())) {
 
             // Required fields for FindPatternInEws
-            if (!definitionMap.containsKey("pattern") || definitionMap.get("pattern") == null) {
+            if (!definitionMap.containsKey("patterns") || definitionMap.get("patterns") == null) {
                 errors.add(prefix + "definition requires pattern field");
             }
 

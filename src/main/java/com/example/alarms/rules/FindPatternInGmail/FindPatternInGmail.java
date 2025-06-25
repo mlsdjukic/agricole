@@ -102,6 +102,10 @@ public class FindPatternInGmail implements Rule {
     }
 
     private void react() {
-        reactions.forEach(reaction -> reaction.execute(new Notification(this.ruleId, params.getAlarmMessage())));
+        Notification notification = new Notification();
+        notification.setRuleId(this.ruleId);
+        notification.setMessage(params.getAlarmMessage());
+
+        reactions.forEach(reaction -> reaction.execute(notification));
     }
 }

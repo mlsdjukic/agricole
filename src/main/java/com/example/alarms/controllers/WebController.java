@@ -1,6 +1,6 @@
 package com.example.alarms.controllers;
 
-import com.example.alarms.dto.AlarmResponse;
+import com.example.alarms.dto.Alarm;
 import com.example.alarms.services.AlarmService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.ArrayList;
 import java.util.List;
-import com.example.alarms.services.AlarmService;
 
 @Controller
 @RequestMapping("/")
@@ -23,7 +22,7 @@ public class WebController {
 
     @GetMapping("/")
     public String index(Model model) {
-        List<AlarmResponse> alarms = new ArrayList<>();
+        List<Alarm> alarms = new ArrayList<>();
         alarmService.getAll().collectList()
                 .map(list -> {
                     // use list here

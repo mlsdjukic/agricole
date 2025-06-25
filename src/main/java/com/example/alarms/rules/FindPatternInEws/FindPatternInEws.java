@@ -25,13 +25,22 @@ public class FindPatternInEws implements Rule {
     private final List<Long> patternTimestamps;
     private FindPatternInEwsDefinition params;
 
+    private String sender;
+    private String subject;
+    private String body;
+
+    private Long alarmTypeId;
+    private Long alarmClassId;
+
     private final List<Reaction> reactions;
 
 
-    public FindPatternInEws(String rulesJson, Long ruleId, List<Reaction> reactions) {
+    public FindPatternInEws(String rulesJson, Long ruleId, List<Reaction> reactions, Long alarmTypeId, Long alarmClassId) {
         this.ruleId = ruleId;
         this.reactions = reactions;
         this.patternTimestamps = new ArrayList<>();
+        this.alarmTypeId = alarmTypeId;
+        this.alarmClassId =  alarmClassId;
         mapParamsToFields(rulesJson);
     }
 
@@ -76,11 +85,12 @@ public class FindPatternInEws implements Rule {
 
     @Override
     public void execute(Object data) {
-        log.info("Executing rule with id: {}", this.ruleId);
 
         if (!(data instanceof EmailMessage email)) {
             return;
         }
+
+        log.info("Executing rule with id: {}", this.ruleId);
 
         if (!isNowWithinInterval(this.params.getStartTime(), this.params.getEndTime())) {
             // Current time is outside the allowed interval, exit early
@@ -88,8 +98,10 @@ public class FindPatternInEws implements Rule {
         }
 
         try {
-            for (com.example.alarms.rules.FindPatternInEws.FindPatternInEwsDefinition.PatternDefinition pattern : this.params.getPatterns()){
-                String container = extractContainer(email, pattern.getLocation());
+            extractContainers(email);
+
+            for (FindPatternInEwsDefinition.PatternDefinition pattern : this.params.getPatterns()){
+                String container = getContainer(pattern.getLocation());
                 if (container == null) {
                     return;
                 }
@@ -107,11 +119,17 @@ public class FindPatternInEws implements Rule {
         }
     }
 
-    private String extractContainer(EmailMessage email, String location) throws ServiceLocalException {
+    private void extractContainers(EmailMessage email) throws ServiceLocalException {
+        this.sender = email.getSender().toString();
+        this.body = email.getBody().toString();
+        this.subject = email.getSubject();
+    }
+
+    private String getContainer(String location) {
         return switch (location) {
-            case "body" -> email.getBody().toString();
-            case "subject" -> email.getSubject();
-            case "sender" -> email.getSender().toString();
+            case "body" -> this.body;
+            case "subject" -> this.subject;
+            case "sender" -> this.sender;
             default -> {
                 log.error("Unsupported location {}", location);
                 yield null;
@@ -135,7 +153,17 @@ public class FindPatternInEws implements Rule {
     }
 
     private void react() {
-        reactions.forEach(reaction -> reaction.execute(new Notification(this.ruleId, params.getAlarmMessage())));
+        Notification notification = new Notification();
+        notification.setRuleId(this.ruleId);
+        notification.setBody(this.body);
+        notification.setSubject(this.subject);
+        notification.setSender(this.sender);
+        notification.setMessage(params.getAlarmMessage());
+        notification.setAlarmClassId(this.alarmClassId);
+        notification.setAlarmTypeId(this.alarmTypeId);
+
+
+        reactions.forEach(reaction -> reaction.execute(notification));
     }
 
 }

@@ -162,7 +162,8 @@ public class Coordinator {
     }
 
     private Mono<ReservationEntity> tryAcquireAndProcessJob(ReservationEntity job, LocalDateTime timeoutThreshold) {
-        return reservationService.tryAcquireJob(
+        return  stopAction(job.getActionId())
+                .then(reservationService.tryAcquireJob(
                         job.getId(),
                         instanceId,
                         LocalDateTime.now(),
@@ -188,7 +189,7 @@ public class Coordinator {
                                     reservationService.releaseJob(job.getId(), instanceId)
                                             .then(Mono.empty())
                             ));
-                });
+                }));
     }
 
     public Action createAction(ActionEntity actionEntity) throws Exception {
@@ -196,13 +197,13 @@ public class Coordinator {
         return (Action) createInstance(actionClassName, new Class<?>[]{String.class, Long.class}, actionEntity.getParams(), actionEntity.getId());
     }
 
-    public List<Rule> createRules(List<RuleEntity> ruleEntities) {
-        return ruleEntities.stream()
-                .map(this::createRule)
+    public List<Rule> createRules(ActionEntity actionEntity) {
+        return actionEntity.getRules().stream()
+                .map(ruleEntity -> createRule(ruleEntity, actionEntity.getAlarmTypeId(), actionEntity.getAlarmClassId()))
                 .collect(Collectors.toList());
     }
 
-    private Rule createRule(RuleEntity ruleEntity) {
+    private Rule createRule(RuleEntity ruleEntity, Long alarmTypeId, Long alarmClassId) {
         List<Reaction> reactions = Stream.concat(
                 ruleEntity.getReactions().stream().map(this::createReaction), // Existing reactions
                 Stream.of(new WriteAlarmToDBReaction(ruleEntity.getId()) ) // adding write alarm to db as default reaction
@@ -211,8 +212,8 @@ public class Coordinator {
         String ruleClassName = "com.example.alarms.rules." + ruleEntity.getName() + "." + ruleEntity.getName();
         try {
             return (Rule) createInstance(ruleClassName,
-                    new Class<?>[]{String.class, Long.class, List.class},
-                    ruleEntity.getDefinition(), ruleEntity.getId(), reactions);
+                    new Class<?>[]{String.class, Long.class, List.class, Long.class, Long.class},
+                    ruleEntity.getDefinition(), ruleEntity.getId(), reactions, alarmTypeId, alarmClassId);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create Rule: " + ruleEntity.getName(), e);
         }
@@ -277,7 +278,7 @@ public class Coordinator {
                     try {
                         log.debug("Entering try block");
                         Action action = createAction(actionEntity);
-                        List<Rule> rules = createRules(actionEntity.getRules());
+                        List<Rule> rules = createRules(actionEntity);
                         return Mono.just(Tuples.of(action, rules));
                     } catch (Exception e) {
                         Throwable original = e.getCause();
@@ -294,6 +295,7 @@ public class Coordinator {
      */
     private Flux<Void> executeActionAndRules(Action action, List<Rule> rules) {
         return action.execute()
+                .switchIfEmpty(Mono.just(new Object()))
                 .flatMap(data -> Flux.fromIterable(rules)
                         .doOnNext(rule -> rule.execute(data))
                         .then());

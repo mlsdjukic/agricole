@@ -25,6 +25,11 @@ public class AccountService {
                 .map(accountMapper::toDTO);
     }
 
+    public Mono<Account> getAccountByUsername(String username) {
+        return accountRepository.findByUsername(username)
+                .map(accountMapper::toDTO);
+    }
+
     public Flux<Account> getAllAccounts() {
         return accountRepository.findAll()
                 .map(accountMapper::toDTO);

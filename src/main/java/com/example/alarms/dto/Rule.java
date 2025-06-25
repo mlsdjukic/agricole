@@ -1,5 +1,6 @@
 package com.example.alarms.dto;
 
+import com.example.alarms.rules.DetectMissingEmail.DetectMissingEmailDefinition;
 import com.example.alarms.rules.FindPatternInEws.FindPatternInEwsDefinition;
 import com.example.alarms.rules.FindPatternInGmail.FindPatternInGmailDefinition;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -15,7 +16,7 @@ import java.util.List; /**
 public class Rule {
     @Schema(description = "Name of the rule defining its behavior",
             example = "FindPatternInEws",
-            allowableValues = {"FindPatternInEws","FindPatternInGmail"},
+            allowableValues = {"FindPatternInEws","FindPatternInGmail","DetectMissingEmail"},
             required = true)
     private String name;
 
@@ -24,7 +25,8 @@ public class Rule {
             required = true,
             oneOf = {
                     FindPatternInEwsDefinition.class,
-                    FindPatternInGmailDefinition.class
+                    FindPatternInGmailDefinition.class,
+                    DetectMissingEmailDefinition.class
             }
     )
     @JsonTypeInfo(
@@ -34,7 +36,8 @@ public class Rule {
     )
     @JsonSubTypes({
             @JsonSubTypes.Type(value = FindPatternInEwsDefinition.class, name = "FindPatternInEws"),
-            @JsonSubTypes.Type(value = FindPatternInGmailDefinition.class, name = "FindPatternInGmail")
+            @JsonSubTypes.Type(value = FindPatternInGmailDefinition.class, name = "FindPatternInGmail"),
+            @JsonSubTypes.Type(value = DetectMissingEmailDefinition.class, name = "DetectMissingEmail")
     })
     private Object definition;
 

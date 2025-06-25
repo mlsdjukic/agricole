@@ -1,9 +1,12 @@
 package com.example.alarms.services;
 
-import com.example.alarms.dto.AlarmRequest;
-import com.example.alarms.dto.AlarmResponse;
+import com.example.alarms.dto.Alarm;
+import com.example.alarms.dto.AlarmMapper;
+import com.example.alarms.dto.AlarmWithTypeAndClass;
 import com.example.alarms.entities.AlarmEntity;
+import com.example.alarms.repositories.AlarmClassRepository;
 import com.example.alarms.repositories.AlarmRepository;
+import com.example.alarms.repositories.AlarmTypeRepository;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -12,27 +15,33 @@ import reactor.core.publisher.Mono;
 public class AlarmService {
 
     private final AlarmRepository alarmRepository;
+    private final AlarmTypeRepository alarmTypeRepository;
+    private final AlarmClassRepository alarmClassRepository;
+    private final AlarmMapper alarmMapper;
 
-    public AlarmService(AlarmRepository alarmRepository) {
+    public AlarmService(AlarmRepository alarmRepository, AlarmTypeRepository alarmTypeRepository, AlarmClassRepository alarmClassRepository, AlarmMapper alarmMapper) {
         this.alarmRepository = alarmRepository;
+        this.alarmTypeRepository = alarmTypeRepository;
+        this.alarmClassRepository = alarmClassRepository;
+        this.alarmMapper = alarmMapper;
     }
 
     // Save or update an alarm
-    public Mono<AlarmResponse> save(AlarmRequest AlarmRequest) {
-        AlarmEntity alarmEntity = toEntity(AlarmRequest);
+    public Mono<Alarm> save(Alarm alarmRequest) {
+        AlarmEntity alarmEntity = alarmMapper.toEntity(alarmRequest);
         return alarmRepository.save(alarmEntity)
-                .map(this::toResponseDto);
+                .map(alarmMapper::toDto);
     }
 
-    public Flux<AlarmResponse> getAll() {
+    public Flux<Alarm> getAll() {
         return alarmRepository.findAll()
-                .map(this::toResponseDto);
+                .map(alarmMapper::toDto);
     }
 
     // Get alarm by ID
-    public Mono<AlarmResponse> getById(Long id) {
+    public Mono<Alarm> getById(Long id) {
         return alarmRepository.findById(id)
-                .map(this::toResponseDto);
+                .map(alarmMapper::toDto);
     }
 
     // Delete alarm by ID
@@ -41,33 +50,27 @@ public class AlarmService {
     }
 
     // Get the last record by ruleId
-    public Mono<AlarmResponse> getLastRecordByRuleId(Long ruleId) {
+    public Mono<Alarm> getLastRecordByRuleId(Long ruleId) {
         return alarmRepository.findFirstByRuleIdOrderByIdDesc(ruleId)
-                .map(this::toResponseDto);
+                .map(alarmMapper::toDto);
     }
 
     // Get all alarms with pagination
-    public Flux<AlarmResponse> getAllWithPagination(int page, int size) {
+    public Flux<Alarm> getAllWithPagination(int page, int size) {
         return alarmRepository.findAllBy()
                 .skip((long) page * size)
                 .take(size)
-                .map(this::toResponseDto);
+                .map(alarmMapper::toDto);
     }
 
-    // Mapping methods
-    private AlarmEntity toEntity(AlarmRequest dto) {
-        AlarmEntity entity = new AlarmEntity();
-        entity.setRuleId(dto.getRuleId());
-        entity.setMessage(dto.getMessage());
-        return entity;
-    }
-
-    private AlarmResponse toResponseDto(AlarmEntity entity) {
-        AlarmResponse dto = new AlarmResponse();
-        dto.setId(entity.getId());
-        dto.setRuleId(entity.getRuleId());
-        dto.setMessage(entity.getMessage());
-        return dto;
+    public Mono<AlarmWithTypeAndClass> getAlarmWithTypeAndClass(Long alarmId) {
+        return alarmRepository.findById(alarmId)
+                .flatMap(alarm ->
+                        Mono.zip(
+                                alarmTypeRepository.findById(alarm.getAlarmTypeId()),
+                                alarmClassRepository.findById(alarm.getAlarmClassId())
+                        ).map(tuple -> new AlarmWithTypeAndClass(alarm, tuple.getT1(), tuple.getT2()))
+                );
     }
 }
 

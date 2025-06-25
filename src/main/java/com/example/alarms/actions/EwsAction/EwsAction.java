@@ -1,6 +1,8 @@
 package com.example.alarms.actions.EwsAction;
 
 import com.example.alarms.actions.Action;
+import com.example.alarms.components.ApplicationContextProvider;
+import com.example.alarms.services.EnvService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -42,13 +44,22 @@ public class EwsAction implements Action {
     private ExchangeService service;
     private PullSubscription subscription;
 
+    private EnvService envService;
+
     public EwsAction(String jsonParams, Long actionId) throws Exception {
+        this.envService = ApplicationContextProvider.getApplicationContext().getBean(EnvService.class);
+
         this.paramsJson = jsonParams;
         this.actionId = actionId;
         this.params = mapParamsToFields();
 
+        Optional<EnvService.EwsAccountDetails> ewsPassword = envService.findByUrlAndUsername(this.params.getEws_url(), this.params.getUsername());
+        if (ewsPassword.isEmpty()){
+            throw new RuntimeException("Account not present in env");
+        }
+
         service = new ExchangeService(ExchangeVersion.Exchange2010_SP2);
-        service.setCredentials(new WebCredentials(this.params.getUsername(), this.params.getPassword()));
+        service.setCredentials(new WebCredentials(this.params.getUsername(), ewsPassword.get().getPassword()));
         try {
             service.setUrl(new URI(this.params.getEws_url().trim()));
         } catch (URISyntaxException e) {

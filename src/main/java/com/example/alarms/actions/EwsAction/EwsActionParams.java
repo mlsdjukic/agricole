@@ -19,9 +19,5 @@ public class EwsActionParams {
     @JsonProperty("username")
     @Schema(description = "Username for EWS", example = "username", required = true)
     private String username;
-
-    @JsonProperty("password")
-    @Schema(description = "Password for EWS", example = "password", required = true)
-    private String password;
 }
 

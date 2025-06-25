@@ -1,14 +1,10 @@
-package com.example.alarms.entities;
+package com.example.alarms.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 
@@ -16,10 +12,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("alarms")
-public class AlarmEntity {
-
-    @Id
+public class Alarm {
     private Long id;
     private Long ruleId;
     private String message;
@@ -28,18 +21,9 @@ public class AlarmEntity {
     private String createdFrom;
     private String metadata;
     private String relation;
-
-    @Column("alarm_type_id")
     private Long alarmTypeId;
-
-    @Column("alarm_class_id")
     private Long alarmClassId;
-
-    @CreatedDate
     private LocalDateTime createdDate;
-
-    @LastModifiedDate
     private LocalDateTime updatedAt;
-
-
 }
+
