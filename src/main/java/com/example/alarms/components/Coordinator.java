@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -65,7 +64,7 @@ public class Coordinator {
         this.subscriptions = new ConcurrentHashMap<>();
 
         this.jobTimeout = Duration.ofSeconds(Integer.parseInt(env.getProperty("JOB_TIMEOUT", "60")));
-        this.batchSize = Integer.parseInt(env.getProperty("BATCH_SIZE", "50"));
+        this.batchSize = Integer.parseInt(env.getProperty("BATCH_SIZE", "5"));
 
         this.instanceId = UUID.randomUUID().toString();
         this.isRunning = false;
@@ -135,6 +134,8 @@ public class Coordinator {
 
     public void start() {
         isRunning = true;
+
+        setupHeartbeat();
 
         initializeJobs(this.batchSize - this.subscriptions.size())
                 // Handle errors at the individual job level
@@ -307,29 +308,15 @@ public class Coordinator {
     private void setupPeriodicExecution(Action action, List<Rule> rules,
                                         ActionEntity actionEntity, Long jobId) {
 
-        AtomicInteger counter = new AtomicInteger(0);
-
         Disposable subscription = Flux.interval(Duration.ofSeconds(action.getInterval()))
                 .publishOn(Schedulers.boundedElastic())
                 .concatMap(tick -> {
-                    Flux<Void> actionFlux = executeActionAndRules(action, rules)
+                    // Continue on error
+                    return executeActionAndRules(action, rules)
                         .onErrorResume(err -> {
                             log.error("Error executing action: {}", err.getMessage());
                             return Flux.empty(); // Continue on error
                         });
-                    // Update heartbeat only every 6 ticks (60 seconds if interval is 10 seconds)
-                    if (counter.incrementAndGet() % 6 == 0) {
-                        return actionFlux.thenMany(
-                                reservationService.updateHeartbeat(jobId, instanceId, LocalDateTime.now())
-                                        .onErrorResume(err -> {
-                                            log.error("Failed to update heartbeat for job {}: {}", jobId, err.getMessage());
-                                            // Continue despite heartbeat errors
-                                            return Mono.empty();
-                                        })
-                                        .thenMany(Flux.empty())
-                        );
-                    }
-                    return actionFlux;
 
                 })
                 .onErrorResume(throwable -> {
@@ -360,7 +347,7 @@ public class Coordinator {
         // If no job found, return an appropriate error
         if (jobDescription == null) {
 
-            log.warn("No active job found for action ID: {}", actionId);
+            log.debug("No active job found for action ID: {}", actionId);
             return Mono.empty();
         }
 
@@ -404,6 +391,24 @@ public class Coordinator {
         // Check if the actionId has an active subscription
         return subscriptions.containsKey(actionId);
     }
+
+    private void setupHeartbeat() {
+        Flux.interval(Duration.ofSeconds(30))
+                .publishOn(Schedulers.boundedElastic())
+                .flatMap(tick -> Flux.fromIterable(subscriptions.entrySet())
+                        .flatMap(entry -> {
+                            Long jobId = entry.getValue().getJobId(); // assuming getter exists
+                            return reservationService.updateHeartbeat(jobId, instanceId, LocalDateTime.now())
+                                    .subscribeOn(Schedulers.boundedElastic())
+                                    .onErrorResume(err -> {
+                                        log.error("Failed to update heartbeat for job {}: {}", jobId, err.getMessage());
+                                        return Mono.empty();
+                                    });
+                        }))
+                .subscribe();
+    }
+
+
 
     public Mono<ActionEntity> create(ActionRequest action, Object authentication) {
         // Extract user ID from authentication context
