@@ -13,8 +13,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AlarmWithTypeAndClass {
-    private AlarmEntity alarm;
-    private AlarmTypeEntity type;
-    private AlarmClassEntity alarmClass;
+    private AlarmResponse alarm;
+    private AlarmType type;
+    private AlarmClass alarmClass;
 
 }

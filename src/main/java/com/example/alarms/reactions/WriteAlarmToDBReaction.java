@@ -1,7 +1,7 @@
 package com.example.alarms.reactions;
 
 import com.example.alarms.components.ApplicationContextProvider;
-import com.example.alarms.dto.Alarm;
+import com.example.alarms.dto.AlarmRequest;
 import com.example.alarms.dto.Notification;
 import com.example.alarms.services.AlarmService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,7 +30,7 @@ public class WriteAlarmToDBReaction implements Reaction{
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             String jsonString = objectMapper.writeValueAsString(notification);
-            Alarm alarm = new Alarm();
+            AlarmRequest alarm = new AlarmRequest();
             alarm.setRuleId(notification.getRuleId());
             alarm.setAlarmTypeId(notification.getAlarmTypeId());
             alarm.setAlarmClassId(notification.getAlarmClassId());

@@ -1,6 +1,6 @@
 package com.example.alarms.controllers;
 
-import com.example.alarms.dto.Alarm;
+import com.example.alarms.dto.AlarmWithTypeAndClass;
 import com.example.alarms.services.AlarmService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,7 +22,7 @@ public class WebController {
 
     @GetMapping("/")
     public String index(Model model) {
-        List<Alarm> alarms = new ArrayList<>();
+        List<AlarmWithTypeAndClass> alarms = new ArrayList<>();
         alarmService.getAll().collectList()
                 .map(list -> {
                     // use list here

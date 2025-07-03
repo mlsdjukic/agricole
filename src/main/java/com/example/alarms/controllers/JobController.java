@@ -88,20 +88,27 @@ public class JobController {
                 .flatMap(authentication -> coordinator.create(action, authentication))
                 .map(actionMapper::toActionResponse)
                 .onErrorMap(e -> {
-                    if (e instanceof UserNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
-                    } else if (e instanceof InvalidActionException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof RuleProcessingException) {
-                        return new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), e);
-                    } else if (e instanceof SerializationException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof DuplicateKeyException) {
-                        return new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
-                    } else {
-                        log.error("Unexpected error during action creation", e);
-                        return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                "An error occurred while creating the action", e);
+                    switch (e) {
+                        case UserNotFoundException userNotFoundException -> {
+                            return new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
+                        }
+                        case InvalidActionException invalidActionException -> {
+                            return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+                        }
+                        case RuleProcessingException ruleProcessingException -> {
+                            return new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), e);
+                        }
+                        case SerializationException serializationException -> {
+                            return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+                        }
+                        case DuplicateKeyException duplicateKeyException -> {
+                            return new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
+                        }
+                        case null, default -> {
+                            log.error("Unexpected error during action creation", e);
+                            return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                    "An error occurred while creating the action", e);
+                        }
                     }
                 });
     }
@@ -162,22 +169,30 @@ public class JobController {
         return coordinator.update(action, id)
                 .map(actionMapper::toActionResponse)
                 .onErrorMap(e -> {
-                    if (e instanceof UserNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
-                    } else if (e instanceof InvalidActionException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof EntityNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-                    } else if (e instanceof RuleProcessingException) {
-                        return new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), e);
-                    } else if (e instanceof SerializationException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof DuplicateKeyException) {
-                        return new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
-                    } else {
-                        log.error("Unexpected error during action update for ID {}", id, e);
-                        return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                "An error occurred while updating the action", e);
+                    switch (e) {
+                        case UserNotFoundException userNotFoundException -> {
+                            return new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage(), e);
+                        }
+                        case InvalidActionException invalidActionException -> {
+                            return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+                        }
+                        case EntityNotFoundException entityNotFoundException -> {
+                            return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+                        }
+                        case RuleProcessingException ruleProcessingException -> {
+                            return new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), e);
+                        }
+                        case SerializationException serializationException -> {
+                            return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+                        }
+                        case DuplicateKeyException duplicateKeyException -> {
+                            return new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
+                        }
+                        case null, default -> {
+                            log.error("Unexpected error during action update for ID {}", id, e);
+                            return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                    "An error occurred while updating the action", e);
+                        }
                     }
                 });
     }
@@ -232,16 +247,17 @@ public class JobController {
                     log.error("Error retrieving actions: {}", e.getMessage(), e);
 
                     // Map different exceptions to appropriate HTTP status exceptions
-                    if (e instanceof IllegalArgumentException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof EntityNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-                    }  else if (e instanceof DataAccessException) {
-                        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database service unavailable", e);
-                    } else {
-                        // For unexpected errors
-                        return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", e);
-                    }
+                    return switch (e) {
+                        case IllegalArgumentException illegalArgumentException ->
+                                new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+                        case EntityNotFoundException entityNotFoundException ->
+                                new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+                        case DataAccessException dataAccessException ->
+                                new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database service unavailable", e);
+                        default ->
+                            // For unexpected errors
+                                new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", e);
+                    };
                 });
     }
 
@@ -258,20 +274,21 @@ public class JobController {
                 .onErrorMap(e -> {
                     log.error("Error retrieving actions: {}", e.getMessage(), e);
 
-                    if (e instanceof ResponseStatusException) {
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-                    }
-                    // Map different exceptions to appropriate HTTP status exceptions
-                    if (e instanceof IllegalArgumentException) {
-                        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-                    } else if (e instanceof EntityNotFoundException) {
-                        return new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-                    }  else if (e instanceof DataAccessException) {
-                        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database service unavailable", e);
-                    } else {
-                        // For unexpected errors
-                        return new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", e);
-                    }
+                    return switch (e) {
+                        case ResponseStatusException responseStatusException ->
+                                new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+
+                        // Map different exceptions to appropriate HTTP status exceptions
+                        case IllegalArgumentException illegalArgumentException ->
+                                new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+                        case EntityNotFoundException entityNotFoundException ->
+                                new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+                        case DataAccessException dataAccessException ->
+                                new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database service unavailable", e);
+                        default ->
+                            // For unexpected errors
+                                new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", e);
+                    };
                 });
     }
 }

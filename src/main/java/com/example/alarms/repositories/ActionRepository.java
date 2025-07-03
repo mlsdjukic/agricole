@@ -21,6 +21,7 @@ public interface ActionRepository extends ReactiveCrudRepository<ActionEntity, L
     LIMIT :limit OFFSET :offset
     """)
     Flux<ActionEntity> findActionsInRange(@Param("limit") int limit, @Param("offset") int offset);
+
     Flux<ActionEntity> findAllBy(Pageable pageable);
 
 }

@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AlarmMapper {
-    public AlarmEntity toEntity(Alarm dto) {
+    public AlarmEntity toEntity(AlarmRequest dto) {
         AlarmEntity entity = new AlarmEntity();
         entity.setId(dto.getId());
         entity.setRuleId(dto.getRuleId());
@@ -21,12 +21,11 @@ public class AlarmMapper {
         return entity;
     }
 
-    public Alarm toDto(AlarmEntity entity) {
-        Alarm dto = new Alarm();
+    public AlarmResponse toDto(AlarmEntity entity) {
+        AlarmResponse dto = new AlarmResponse();
         dto.setId(entity.getId());
         dto.setRuleId(entity.getRuleId());
         dto.setMessage(entity.getMessage());
-        dto.setArchived(entity.getArchived());
         dto.setMetadata(entity.getMetadata());
         dto.setRelation(entity.getRelation());
         dto.setStatus(entity.getStatus());

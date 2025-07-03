@@ -168,6 +168,8 @@ public class ActionMapper {
         ActionResponse dto = new ActionResponse();
         dto.setType(entity.getType());
         dto.setId(entity.getId());
+        dto.setAlarmTypeId(entity.getAlarmTypeId());
+        dto.setAlarmClassId(entity.getAlarmClassId());
 
         // Convert JSON string to Map
         if (entity.getParams() != null && !entity.getParams().isEmpty()) {
