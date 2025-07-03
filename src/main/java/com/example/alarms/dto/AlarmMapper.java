@@ -16,7 +16,8 @@ public class AlarmMapper {
         entity.setStatus(dto.getStatus());
         entity.setAlarmTypeId(dto.getAlarmTypeId());
         entity.setAlarmClassId(dto.getAlarmClassId());
-
+        entity.setCreatedDate(dto.getCreatedDate());
+        entity.setUpdatedAt(dto.getUpdatedAt());
         return entity;
     }
 
@@ -31,6 +32,8 @@ public class AlarmMapper {
         dto.setStatus(entity.getStatus());
         dto.setAlarmTypeId(entity.getAlarmTypeId());
         dto.setAlarmClassId(entity.getAlarmClassId());
+        dto.setCreatedDate(entity.getCreatedDate());
+        dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
     }
 }

@@ -18,13 +18,13 @@ CREATE TABLE accounts (
     CONSTRAINT accounts_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE alarm_types (
+CREATE TABLE alarm_type (
     id BIGINT PRIMARY KEY IDENTITY(1,1),
     name NVARCHAR(255) NOT NULL UNIQUE,
     metadata NVARCHAR(MAX) NULL  -- or use SQL Server's `JSON` features for validation/querying
 );
 
-CREATE TABLE alarm_classes (
+CREATE TABLE alarm_class (
     id BIGINT PRIMARY KEY IDENTITY(1,1),
     name NVARCHAR(255) NOT NULL UNIQUE,
     metadata NVARCHAR(MAX) NULL  -- or use SQL Server's `JSON` features for validation/querying

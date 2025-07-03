@@ -29,10 +29,10 @@ public class AlarmEntity {
     private String metadata;
     private String relation;
 
-    @Column("alarm_type_id")
+    @Column("type_id")
     private Long alarmTypeId;
 
-    @Column("alarm_class_id")
+    @Column("class_id")
     private Long alarmClassId;
 
     @CreatedDate

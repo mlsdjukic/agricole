@@ -7,7 +7,7 @@ import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
-@Table(name = "alarm_classes")
+@Table(name = "alarm_class")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -17,7 +17,5 @@ public class AlarmClassEntity {
     private Long id;
 
     private String name;
-
-    // Store metadata as raw JSON string (use @Column if needed)
     private String metadata;
 }

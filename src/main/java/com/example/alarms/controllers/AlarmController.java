@@ -1,6 +1,7 @@
 package com.example.alarms.controllers;
 import com.example.alarms.dto.Alarm;
 import com.example.alarms.dto.AlarmWithTypeAndClass;
+import com.example.alarms.exceptions.EntityNotFoundException;
 import com.example.alarms.services.AlarmService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.MediaType;
@@ -20,31 +21,36 @@ public class AlarmController {
     }
 
     // Create or update an alarm
-    @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<Alarm> createOrUpdateAlarm(@RequestBody Alarm Alarm) {
+    @PostMapping
+    public Mono<Alarm> create(@RequestBody Alarm Alarm) {
         return alarmService.save(Alarm);
     }
 
+    @PutMapping("/{id}")
+    public Mono<Alarm> update(@PathVariable Long id, @RequestBody Alarm alarm) {
+        return alarmService.update(alarm, id);
+    }
+
     // Get alarm by ID
-    @GetMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(path = "/{id}")
     public Mono<AlarmWithTypeAndClass> getAlarmById(@PathVariable Long id) {
         return alarmService.getAlarmWithTypeAndClass(id);
     }
 
     // Delete alarm by ID
-    @DeleteMapping(path = "/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @DeleteMapping(path = "/{id}")
     public Mono<Void> deleteAlarm(@PathVariable Long id) {
         return alarmService.deleteById(id);
     }
 
     // Get the last record by ruleId
-    @GetMapping(path = "/last/{ruleId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(path = "/last/{ruleId}")
     public Mono<Alarm> getLastRecordByRuleId(@PathVariable Long ruleId) {
         return alarmService.getLastRecordByRuleId(ruleId);
     }
 
     // Get all alarms with pagination
-    @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping
     public Flux<Alarm> getAlarmsPage(@RequestParam int page, @RequestParam int size) {
         return alarmService.getAllWithPagination(page, size);
     }

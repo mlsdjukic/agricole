@@ -16,7 +16,7 @@ public class AccountMapper {
     public Account toDTO(AccountEntity entity) {
         Account dto = new Account();
         dto.setUsername(entity.getUsername());
-        dto.setPassword(entity.getPassword());
+        //dto.setPassword(entity.getPassword());
         return dto;
     }
 }

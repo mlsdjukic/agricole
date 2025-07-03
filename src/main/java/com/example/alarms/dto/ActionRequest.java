@@ -6,10 +6,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import org.springframework.data.relational.core.mapping.Column;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Request model for creating an action
